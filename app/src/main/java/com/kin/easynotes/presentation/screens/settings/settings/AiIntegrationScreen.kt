@@ -62,7 +62,7 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                 )
             }
 
-            // Controls Section (Manual Switch to match Solid design)
+            // Configuration Section
             item {
                 Column {
                     Text(
@@ -72,11 +72,11 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                         modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                     )
                     
-                    // Custom Row for Switch since SettingSection doesn't support it
+                    // Manual Row to match SettingSection style with a Switch
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(32.dp)) // Matching app's SectionBlock shape
+                            .clip(RoundedCornerShape(32.dp))
                             .background(color = MaterialTheme.colorScheme.surfaceContainer)
                             .padding(horizontal = 24.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -123,7 +123,7 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "1. Connect phone and PC to the same Wi-Fi.\n" +
-                                   "2. Copy the URL and add it to your AI client.",
+                                   "2. Copy the URL and add it to your AI client configuration (e.g., Claude Desktop).",
                             style = MaterialTheme.typography.bodyMedium,
                             lineHeight = 20.sp
                         )
