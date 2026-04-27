@@ -16,11 +16,10 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
-import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
+import io.modelcontextprotocol.kotlin.sdk.types.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
@@ -80,9 +79,8 @@ class McpServerService : Service() {
                 // Tool: list_notes
                 mcpServer.addTool(
                     name = "list_notes",
-                    description = "List all notes saved in the app",
-                    inputSchema = Tool.Input(properties = emptyMap())
-                ) {
+                    description = "List all notes saved in the app"
+                ) { request ->
                     val notes = runBlocking { noteRepository.getAllNotes().first() }
                     val contentText = notes.joinToString("\n---\n") { 
                         "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}" 
@@ -93,17 +91,10 @@ class McpServerService : Service() {
                 // Tool: add_note
                 mcpServer.addTool(
                     name = "add_note",
-                    description = "Create a new note in the app",
-                    inputSchema = Tool.Input(
-                        properties = mapOf(
-                            "title" to JsonPrimitive("string"),
-                            "content" to JsonPrimitive("string")
-                        ),
-                        required = listOf("title", "content")
-                    )
+                    description = "Create a new note in the app"
                 ) { request ->
-                    val title = request.arguments["title"]?.jsonPrimitive?.content ?: ""
-                    val content = request.arguments["content"]?.jsonPrimitive?.content ?: ""
+                    val title = request.arguments?.get("title")?.jsonPrimitive?.content ?: ""
+                    val content = request.arguments?.get("content")?.jsonPrimitive?.content ?: ""
                     runBlocking { noteRepository.addNote(Note(name = title, description = content)) }
                     CallToolResult(content = listOf(TextContent("Note '$title' added successfully!")))
                 }
