@@ -1,5 +1,6 @@
 package com.kin.easynotes.presentation
 
+import android.content.Intent
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.activity.compose.setContent
@@ -17,6 +18,7 @@ import com.kin.easynotes.presentation.navigation.AppNavHost
 import com.kin.easynotes.presentation.navigation.NavRoutes
 import com.kin.easynotes.presentation.screens.settings.model.SettingsViewModel
 import com.kin.easynotes.presentation.theme.EasyNotesTheme
+import com.kin.easynotes.services.McpServerService
 import dagger.hilt.android.AndroidEntryPoint
 
 fun NavOptionsBuilder.popUpToTop(navController: NavController) {
@@ -34,6 +36,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         installSplashScreen()
         enableEdgeToEdge()
+
+        // Start MCP Server Service
+        val intentMcp = Intent(this, McpServerService::class.java)
+        startForegroundService(intentMcp)
 
         setContent {
             settingsViewModel = hiltViewModel<SettingsViewModel>()
