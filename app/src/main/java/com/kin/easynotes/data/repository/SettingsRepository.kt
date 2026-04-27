@@ -82,4 +82,9 @@ class SettingsRepositoryImpl (private val context: Context) : SettingsRepository
         }
         return widgetPairs
     }
+
+    companion object {
+        const val MCP_ENABLED = "mcp_enabled"
+        const val MCP_PORT = "mcp_port"
+    }
 }
