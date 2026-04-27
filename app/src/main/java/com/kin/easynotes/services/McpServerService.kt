@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.domain.repository.NoteRepository
 import com.kin.easynotes.domain.repository.SettingsRepository
@@ -21,8 +23,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
 
 @AndroidEntryPoint
 class McpServerService : Service() {
@@ -39,7 +39,7 @@ class McpServerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
-        startForeground(101, createNotification("Starting AI Server..."))
+        startForeground(101, createNotification("AI Server is initializing..."))
         
         serviceScope.launch {
             while (isActive) {
@@ -77,18 +77,20 @@ class McpServerService : Service() {
                     )
                 )
 
+                // Tool: list_notes
                 mcpServer.addTool(
                     name = "list_notes",
                     description = "List all notes saved in the app",
                     inputSchema = Tool.Input(properties = emptyMap())
                 ) {
                     val notes = runBlocking { noteRepository.getAllNotes().first() }
-                    val content = notes.joinToString("\n---\n") { 
+                    val contentText = notes.joinToString("\n---\n") { 
                         "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}" 
                     }
-                    CallToolResult(content = listOf(TextContent(content)))
+                    CallToolResult(content = listOf(TextContent(contentText)))
                 }
 
+                // Tool: add_note
                 mcpServer.addTool(
                     name = "add_note",
                     description = "Create a new note in the app",
