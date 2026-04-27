@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -90,8 +89,8 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                         }
                         Switch(
                             checked = settings.mcpEnabled,
-                            onCheckedChange = { 
-                                viewModel.update(settings.copy(mcpEnabled = it))
+                            onCheckedChange = { isChecked ->
+                                viewModel.update(settings.copy(mcpEnabled = isChecked))
                             }
                         )
                     }
