@@ -2,29 +2,24 @@ package com.kin.easynotes.presentation.screens.settings.settings
 
 import android.content.Context
 import android.net.wifi.WifiManager
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.kin.easynotes.R
 import com.kin.easynotes.presentation.screens.settings.SettingsScaffold
 import com.kin.easynotes.presentation.screens.settings.model.SettingsViewModel
 import com.kin.easynotes.presentation.screens.settings.widgets.SectionBlock
@@ -43,19 +38,30 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
 
     SettingsScaffold(
         settingsViewModel = viewModel,
-        title = "AI Integration (MCP)",
+        title = "AI Integration",
         onBackNavClicked = { navController.navigateUp() }
     ) {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Server Status Section
             item {
-                ServerStatusCard(enabled = settings.mcpEnabled, url = serverUrl)
+                SectionBlock(
+                    listOf(
+                        SettingSection(
+                            title = if (settings.mcpEnabled) "Server is Running" else "Server is Stopped",
+                            features = listOf(if (settings.mcpEnabled) serverUrl else "Enable the switch below to start"),
+                            icon = Icons.Rounded.Dns,
+                            onClick = {}
+                        )
+                    )
+                )
             }
 
+            // Controls Section
             item {
                 Text(
-                    text = "Settings",
+                    text = "Configuration",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 8.dp)
@@ -65,7 +71,7 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                     listOf(
                         SettingSection(
                             title = "Enable MCP Server",
-                            features = listOf("Allow AI models to access your notes via local network"),
+                            features = listOf("Allow AI models to access notes via local network"),
                             icon = Icons.Rounded.PowerSettingsNew,
                             isSwitch = true,
                             switchState = settings.mcpEnabled,
@@ -77,70 +83,50 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                 )
             }
 
+            // Connection Guide Section
             item {
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
+                    ),
+                    shape = MaterialTheme.shapes.large
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "How to connect?", fontWeight = FontWeight.Bold)
+                            Icon(
+                                Icons.Rounded.Info, 
+                                contentDescription = null, 
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "How to connect", 
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "1. Ensure your PC and phone are on the same Wi-Fi.\n" +
-                                   "2. Copy the Server URL above.\n" +
-                                   "3. Add it to your AI client (e.g., Claude Desktop config).",
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp
-                        )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = { clipboardManager.setText(AnnotatedString(serverUrl)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(8.dp)
-                        ) {
-                            Icon(Icons.Rounded.ContentCopy, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Copy Server URL")
+                        Text(
+                            text = "1. Connect phone and PC to the same Wi-Fi network.\n" +
+                                   "2. Copy the Server URL and add it to your AI client configuration (e.g., Claude Desktop).",
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (settings.mcpEnabled) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { clipboardManager.setText(AnnotatedString(serverUrl)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Copy Server URL")
+                            }
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ServerStatusCard(enabled: Boolean, url: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (enabled) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(if (enabled) Color(0xFF4CAF50) else Color.Gray)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = if (enabled) "Server is Running" else "Server is Stopped",
-                    fontWeight = FontWeight.Bold,
-                    color = if (enabled) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (enabled) {
-                    Text(text = url, fontSize = 12.sp, color = Color(0xFF2E7D32).copy(alpha = 0.8f))
                 }
             }
         }
@@ -150,6 +136,8 @@ fun ServerStatusCard(enabled: Boolean, url: String) {
 fun getLocalIpAddress(context: Context): String? {
     val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     var ipAddress = wifiManager.connectionInfo.ipAddress
+    if (ipAddress == 0) return null
+    
     if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
         ipAddress = Integer.reverseBytes(ipAddress)
     }
