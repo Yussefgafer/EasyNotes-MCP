@@ -22,7 +22,7 @@ appcompat = "1.7.1"
 glanceAppwidget = "1.1.0"
 billing = "8.0.0"
 ktor = "3.0.0"
-mcp = "0.1.0"
+mcp = "0.10.0"
 
 [libraries]
 # Room
