@@ -30,6 +30,9 @@ data class Settings(
     var cornerRadius: Int = 32,
     var disableSwipeInEditMode: Boolean = false,
     var makeSearchBarLonger: Boolean = false,
-    var fontSize: Int = 16
+    var fontSize: Int = 16,
+    
+    // MCP Settings
+    var mcpEnabled: Boolean = false,
+    var mcpPort: Int = 8080
 )
-
