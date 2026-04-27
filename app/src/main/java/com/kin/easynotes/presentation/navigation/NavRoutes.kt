@@ -43,15 +43,15 @@ sealed class NavRoutes(val route: String) {
     }
 }
 
-val settingScreens = mapOf<String, @Composable (settingsViewModel: SettingsViewModel, navController : NavController) -> Unit>(
-    NavRoutes.Settings.route to { settings, navController -> MainSettings(settings, navController) },
-    NavRoutes.ColorStyles.route to { settings, navController -> ColorStylesScreen(navController,settings) },
-    NavRoutes.Language.route to { settings, navController -> LanguageScreen(navController,settings) },
-    NavRoutes.Cloud.route to { settings, navController -> CloudScreen(navController,settings) },
-    NavRoutes.Privacy.route to { settings, navController -> PrivacyScreen(navController, settings) },
-    NavRoutes.Markdown.route to { settings, navController ->  MarkdownScreen(navController,settings) },
-    NavRoutes.Tools.route to { settings, navController -> ToolsScreen(navController,settings) },
-    NavRoutes.About.route to { settings, navController -> AboutScreen(navController,settings) },
-    NavRoutes.Support.route to { settings, navController -> SupportScreen(navController,settings) },
-    NavRoutes.AiIntegration.route to { settings, navController -> AiIntegrationScreen(navController, settings) }
+val settingScreens = mapOf<String, @Composable (SettingsViewModel, NavController) -> Unit>(
+    NavRoutes.Settings.route to { vm, nc -> MainSettings(vm, nc) },
+    NavRoutes.ColorStyles.route to { vm, nc -> ColorStylesScreen(nc, vm) },
+    NavRoutes.Language.route to { vm, nc -> LanguageScreen(nc, vm) },
+    NavRoutes.Cloud.route to { vm, nc -> CloudScreen(nc, vm) },
+    NavRoutes.Privacy.route to { vm, nc -> PrivacyScreen(nc, vm) },
+    NavRoutes.Markdown.route to { vm, nc -> MarkdownScreen(nc, vm) },
+    NavRoutes.Tools.route to { vm, nc -> ToolsScreen(nc, vm) },
+    NavRoutes.About.route to { vm, nc -> AboutScreen(nc, vm) },
+    NavRoutes.Support.route to { vm, nc -> SupportScreen(nc, vm) },
+    NavRoutes.AiIntegration.route to { vm, nc -> AiIntegrationScreen(nc, vm) }
 )
