@@ -14,14 +14,15 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
+import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
-import io.modelcontextprotocol.kotlin.sdk.types.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 
 @AndroidEntryPoint
 class McpServerService : Service() {
@@ -33,26 +34,21 @@ class McpServerService : Service() {
     lateinit var settingsRepository: SettingsRepository
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var serverInstance: NettyApplicationEngine? = null
+    private var serverInstance: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private var isServerRunning = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
         startForeground(101, createNotification("Starting AI Server..."))
         
-        // Observe settings and start/stop server dynamically
         serviceScope.launch {
-            settingsRepository.getPreferences().asMap().let { _ ->
-                // We use a simplified way to observe the specific keys
-                // In a real app, you'd have a properly mapped Flow in the repository
-                while (isActive) {
-                    val prefs = settingsRepository.getPreferences()
-                    val enabled = prefs[androidx.datastore.preferences.core.booleanPreferencesKey("mcp_enabled")] ?: false
-                    val port = prefs[androidx.datastore.preferences.core.intPreferencesKey("mcp_port")] ?: 8080
-                    
-                    handleServerLifecycle(enabled, port)
-                    delay(2000) // Poll every 2 seconds for setting changes
-                }
+            while (isActive) {
+                val prefs = settingsRepository.getPreferences()
+                val enabled = prefs[booleanPreferencesKey("mcp_enabled")] ?: false
+                val port = prefs[intPreferencesKey("mcp_port")] ?: 8080
+                
+                handleServerLifecycle(enabled, port)
+                delay(3000) 
             }
         }
         
@@ -73,8 +69,12 @@ class McpServerService : Service() {
                 install(SSE)
                 
                 val mcpServer = Server(
-                    serverInfo = Implementation(name = "EasyNotes-MCP-Server", version = "1.0.0"),
-                    options = ServerOptions(capabilities = ServerCapabilities(tools = ServerCapabilities.Tools(true)))
+                    serverInfo = Implementation(name = "EasyNotes-MCP", version = "1.0.0"),
+                    options = ServerOptions(
+                        capabilities = ServerCapabilities(
+                            tools = ServerCapabilities.Tools(listChanged = true)
+                        )
+                    )
                 )
 
                 mcpServer.addTool(
@@ -118,7 +118,7 @@ class McpServerService : Service() {
             updateNotification("AI Server is running on port $port")
         } catch (e: Exception) {
             isServerRunning = false
-            updateNotification("Error starting server: ${e.message}")
+            updateNotification("Error: ${e.message}")
         }
     }
 
