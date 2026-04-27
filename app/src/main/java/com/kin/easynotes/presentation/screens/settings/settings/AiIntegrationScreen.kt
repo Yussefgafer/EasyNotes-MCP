@@ -2,8 +2,10 @@ package com.kin.easynotes.presentation.screens.settings.settings
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Dns
@@ -13,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -20,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.kin.easynotes.presentation.components.material.MaterialText
 import com.kin.easynotes.presentation.screens.settings.SettingsScaffold
 import com.kin.easynotes.presentation.screens.settings.model.SettingsViewModel
 import com.kin.easynotes.presentation.screens.settings.widgets.SectionBlock
@@ -58,68 +62,77 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                 )
             }
 
-            // Controls Section
+            // Controls Section (Manual Switch to match Solid design)
             item {
-                Text(
-                    text = "Configuration",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                SectionBlock(
-                    listOf(
-                        SettingSection(
-                            title = "Enable MCP Server",
-                            features = listOf("Allow AI models to access notes via local network"),
-                            icon = Icons.Rounded.PowerSettingsNew,
-                            isSwitch = true,
-                            switchState = settings.mcpEnabled,
-                            onSwitchChange = { 
+                Column {
+                    Text(
+                        text = "Configuration",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                    )
+                    
+                    // Custom Row for Switch since SettingSection doesn't support it
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(32.dp)) // Matching app's SectionBlock shape
+                            .background(color = MaterialTheme.colorScheme.surfaceContainer)
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            MaterialText(
+                                titleSize = 16.sp,
+                                title = "Enable MCP Server",
+                                description = "Allow AI models to access notes"
+                            )
+                        }
+                        Switch(
+                            checked = settings.mcpEnabled,
+                            onCheckedChange = { 
                                 viewModel.update(settings.copy(mcpEnabled = it))
                             }
                         )
-                    )
-                )
+                    }
+                }
             }
 
-            // Connection Guide Section
+            // Connection Guide
             item {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
-                    shape = MaterialTheme.shapes.large
+                    shape = RoundedCornerShape(24.dp)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Rounded.Info, 
                                 contentDescription = null, 
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = "How to connect", 
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.Bold
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "1. Connect phone and PC to the same Wi-Fi network.\n" +
-                                   "2. Copy the Server URL and add it to your AI client configuration (e.g., Claude Desktop).",
+                            text = "1. Connect phone and PC to the same Wi-Fi.\n" +
+                                   "2. Copy the URL and add it to your AI client.",
                             style = MaterialTheme.typography.bodyMedium,
-                            lineHeight = 22.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            lineHeight = 20.sp
                         )
                         if (settings.mcpEnabled) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = { clipboardManager.setText(AnnotatedString(serverUrl)) },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = MaterialTheme.shapes.medium
+                                shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
