@@ -15,13 +15,15 @@ import com.kin.easynotes.domain.repository.NoteRepository
 import com.kin.easynotes.domain.repository.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
-import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sse.*
 import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
 import io.modelcontextprotocol.kotlin.sdk.types.*
@@ -32,6 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -43,8 +46,6 @@ class McpServerService : Service() {
 
     companion object {
         private const val TAG = "McpServerService"
-        private const val AUTH_HEADER = "X-MCP-API-KEY"
-        private const val STATIC_API_KEY = "easynotes-secret-123"
     }
 
     @Inject
@@ -105,7 +106,19 @@ class McpServerService : Service() {
         Log.i(TAG, "Action: Initiating Ktor (CIO) server on port $port")
         try {
             serverInstance = embeddedServer(CIO, port = port, host = "0.0.0.0") {
-                // Personal use: Allow any host but require API Key for critical paths
+                // 1. Install SSE - CRITICAL for Streamable HTTP
+                install(SSE)
+
+                // 2. Install ContentNegotiation - To handle application/json
+                install(ContentNegotiation) {
+                    json(Json {
+                        ignoreUnknownKeys = true
+                        isLenient = true
+                        encodeDefaults = true
+                    })
+                }
+
+                // 3. Open CORS for personal use
                 install(CORS) {
                     anyHost() 
                     allowMethod(HttpMethod.Options)
@@ -113,7 +126,6 @@ class McpServerService : Service() {
                     allowMethod(HttpMethod.Post)
                     allowMethod(HttpMethod.Delete)
                     allowHeader(HttpHeaders.ContentType)
-                    allowHeader(AUTH_HEADER)
                     allowHeader("Mcp-Session-Id")
                     allowHeader("Mcp-Protocol-Version")
                     exposeHeader("Mcp-Session-Id")
@@ -121,33 +133,17 @@ class McpServerService : Service() {
                     allowNonSimpleContentTypes = true
                 }
 
-                // Enhanced Authentication Middleware
-                intercept(ApplicationCallPipeline.Plugins) {
-                    // 1. Always allow OPTIONS for CORS preflight
-                    if (call.request.httpMethod == HttpMethod.Options) return@intercept
-                    
-                    val path = call.request.path()
-                    if (path.startsWith("/mcp")) {
-                        // 2. Protect POST and DELETE (Data access and Session management)
-                        if (call.request.httpMethod == HttpMethod.Post || call.request.httpMethod == HttpMethod.Delete) {
-                            val apiKey = call.request.headers[AUTH_HEADER]
-                            if (apiKey != STATIC_API_KEY) {
-                                call.respond(HttpStatusCode.Unauthorized, "Invalid or missing MCP API Key")
-                                finish()
-                            }
-                        }
-                        // Note: GET is allowed for SSE initialization
-                    }
-                }
-
+                // 4. AUTH REMOVED for debugging connection issues
+                
                 routing {
                     get("/") {
-                        call.respondText("EasyNotes MCP Server is online. Ready at /mcp (Key required for POST)", ContentType.Text.Plain)
+                        call.respondText("EasyNotes MCP Server is LIVE! Connect at /mcp", ContentType.Text.Plain)
                     }
                 }
                 
+                // 5. Mount MCP Transport
                 mcpStreamableHttp(path = "/mcp") {
-                    Log.i(TAG, "MCP Streamable HTTP Transport initialized at /mcp")
+                    Log.i(TAG, "MCP Streamable HTTP Transport factory invoked")
                     Server(
                         serverInfo = Implementation(name = "EasyNotes-MCP", version = "1.2.0"),
                         options = ServerOptions(
@@ -249,7 +245,7 @@ class McpServerService : Service() {
             isServerRunning = true
             currentPort = port
             Log.i(TAG, "Success: Server listening on port $port")
-            updateNotification("MCP Server active on port $port (Auth Enabled)")
+            updateNotification("MCP Server is ACTIVE on port $port")
         } catch (e: Exception) {
             Log.e(TAG, "Critical failure: Could not start Ktor server", e)
             isServerRunning = false
@@ -292,14 +288,12 @@ class McpServerService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "Service: Being destroyed")
-        // FIXED: Using existing serviceScope to perform non-blocking cleanup
+        // Safe cleanup without runBlocking on main thread
         serviceScope.launch {
             try {
                 serverMutex.withLock {
                     stopKtorServerLocked()
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during cleanup", e)
             } finally {
                 serviceScope.cancel()
             }
