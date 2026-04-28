@@ -6,8 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
+import com.kin.easynotes.data.repository.SettingsRepositoryImpl
 import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.domain.repository.NoteRepository
 import com.kin.easynotes.domain.repository.SettingsRepository
@@ -19,7 +18,6 @@ import io.modelcontextprotocol.kotlin.sdk.server.*
 import io.modelcontextprotocol.kotlin.sdk.types.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
@@ -35,6 +33,7 @@ class McpServerService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var serverInstance: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private var isServerRunning = false
+    private var currentPort = -1
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
@@ -42,12 +41,15 @@ class McpServerService : Service() {
         
         serviceScope.launch {
             while (isActive) {
-                val prefs = settingsRepository.getPreferences()
-                val enabled = prefs[booleanPreferencesKey("mcp_enabled")] ?: false
-                val port = prefs[intPreferencesKey("mcp_port")] ?: 8080
-                
-                handleServerLifecycle(enabled, port)
-                delay(3000) 
+                try {
+                    val enabled = settingsRepository.getBoolean(SettingsRepositoryImpl.MCP_ENABLED) ?: false
+                    val port = settingsRepository.getInt(SettingsRepositoryImpl.MCP_PORT) ?: 8080
+
+                    handleServerLifecycle(enabled, port)
+                } catch (e: Exception) {
+                    // Log error but keep service running
+                }
+                delay(5000)
             }
         }
         
@@ -55,20 +57,24 @@ class McpServerService : Service() {
     }
 
     private suspend fun handleServerLifecycle(enabled: Boolean, port: Int) {
-        if (enabled && !isServerRunning) {
-            startKtorServer(port)
-        } else if (!enabled && isServerRunning) {
+        if (enabled) {
+            if (!isServerRunning || currentPort != port) {
+                if (isServerRunning) {
+                    stopKtorServer()
+                }
+                startKtorServer(port)
+            }
+        } else if (isServerRunning) {
             stopKtorServer()
         }
     }
 
     private fun startKtorServer(port: Int) {
         try {
-            // Using the official mcp extension for Ktor
             serverInstance = embeddedServer(Netty, port = port, host = "0.0.0.0") {
                 mcp {
                     val server = Server(
-                        serverInfo = Implementation(name = "EasyNotes-MCP", version = "1.0.0"),
+                        serverInfo = Implementation(name = "EasyNotes-MCP", version = "1.2.0"),
                         options = ServerOptions(
                             capabilities = ServerCapabilities(
                                 tools = ServerCapabilities.Tools(listChanged = true)
@@ -79,10 +85,14 @@ class McpServerService : Service() {
                     server.addTool(
                         name = "list_notes",
                         description = "List all notes saved in the app"
-                    ) { request ->
+                    ) { _ ->
                         val notes = runBlocking { noteRepository.getAllNotes().first() }
-                        val contentText = notes.joinToString("\n---\n") { 
-                            "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}" 
+                        val contentText = if (notes.isEmpty()) {
+                            "No notes found in EasyNotes."
+                        } else {
+                            notes.joinToString("\n---\n") {
+                                "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}"
+                            }
                         }
                         CallToolResult(content = listOf(TextContent(contentText)))
                     }
@@ -93,32 +103,46 @@ class McpServerService : Service() {
                     ) { request ->
                         val title = request.arguments?.get("title")?.jsonPrimitive?.content ?: ""
                         val content = request.arguments?.get("content")?.jsonPrimitive?.content ?: ""
-                        runBlocking { noteRepository.addNote(Note(name = title, description = content)) }
-                        CallToolResult(content = listOf(TextContent("Note '$title' added successfully!")))
+
+                        if (title.isBlank() && content.isBlank()) {
+                            CallToolResult(
+                                content = listOf(TextContent("Error: Both title and content are missing.")),
+                                isError = true
+                            )
+                        } else {
+                            runBlocking { noteRepository.addNote(Note(name = title, description = content)) }
+                            CallToolResult(content = listOf(TextContent("Note \"$title\" added successfully to EasyNotes!")))
+                        }
                     }
 
-                    server // Return the server instance to the mcp extension
+                    server
                 }
             }.start(wait = false)
             
             isServerRunning = true
-            updateNotification("AI Server is running on port $port")
+            currentPort = port
+            updateNotification("AI Server (MCP) is running on port $port")
         } catch (e: Exception) {
             isServerRunning = false
-            updateNotification("Error: ${e.message}")
+            updateNotification("Server Error: ${e.message}")
         }
     }
 
     private fun stopKtorServer() {
-        serverInstance?.stop(1000, 2000)
+        try {
+            serverInstance?.stop(1000, 2000)
+        } catch (e: Exception) {
+            // Silently fail if already stopped
+        }
         serverInstance = null
         isServerRunning = false
-        updateNotification("AI Server is stopped")
+        currentPort = -1
+        updateNotification("AI Server is currently stopped")
     }
 
     private fun createNotification(content: String): Notification {
         return Notification.Builder(this, "mcp_channel")
-            .setContentTitle("EasyNotes MCP")
+            .setContentTitle("EasyNotes MCP Connector")
             .setContentText(content)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)

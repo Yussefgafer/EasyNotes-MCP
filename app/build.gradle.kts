@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.kin.easynotes"
-    compileSdk = 36
+    compileSdk = 35
     flavorDimensions += "store"
 
     productFlavors {
@@ -29,17 +29,13 @@ android {
     defaultConfig {
         applicationId = "com.kin.easynotes"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 14
         versionName = "1.7"
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        // https://developer.android.com/guide/topics/resources/app-languages#gradle-config
-        resourceConfigurations.plus(
-            listOf("en", "ar", "de", "es", "fa", "fil", "fr", "hi", "it", "ja", "ru", "sk", "tr", "da", "nl", "pl", "tr", "uk", "vi", "ota", "pt-rBR", "sr", "zh-rCN")
-        )
+        resourceConfigurations += listOf("en", "ar", "de", "es", "fa", "fil", "fr", "hi", "it", "ja", "ru", "sk", "tr", "da", "nl", "pl", "tr", "uk", "vi", "ota", "pt-rBR", "sr", "zh-rCN")
     }
 
     buildTypes {
@@ -69,8 +65,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
     buildFeatures {
         compose = true
@@ -79,9 +77,11 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            pickFirsts += "META-INF/INDEX.LIST"
+            pickFirsts += "META-INF/io.netty.versions.properties"
         }
     }
-    buildToolsVersion = "36.0.0"
+    buildToolsVersion = "35.0.0"
 }
 
 dependencies {

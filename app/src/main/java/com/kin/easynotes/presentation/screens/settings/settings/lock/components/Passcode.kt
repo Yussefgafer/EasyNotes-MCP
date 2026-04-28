@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Backspace
+import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -199,7 +199,7 @@ fun ActionRow(
             onZeroClick()
         }
         Icon(
-            imageVector = Icons.Rounded.Backspace,
+            imageVector = Icons.AutoMirrored.Rounded.Backspace,
             contentDescription = "Backspace",
             modifier = Modifier
                 .scale(1.5f)

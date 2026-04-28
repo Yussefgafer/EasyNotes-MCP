@@ -19,7 +19,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     val encryptionHelper: EncryptionHelper,
     val noteUseCase: NoteUseCase,
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     var selectedNotes = mutableStateListOf<Note>()
 

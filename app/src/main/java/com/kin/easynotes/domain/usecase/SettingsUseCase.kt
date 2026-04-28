@@ -3,14 +3,14 @@ package com.kin.easynotes.domain.usecase
 import android.content.Context
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.kin.easynotes.core.constant.ConnectionConst
-import com.kin.easynotes.data.repository.SettingsRepositoryImpl
+import com.kin.easynotes.domain.repository.SettingsRepository
 import com.kin.easynotes.domain.model.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 class SettingsUseCase @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val settingsRepository: SettingsRepositoryImpl,
+    @param:ApplicationContext private val context: Context,
+    private val settingsRepository: com.kin.easynotes.domain.repository.SettingsRepository,
 ) {
 
     suspend fun loadSettingsFromRepository(): Settings {
