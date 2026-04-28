@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class NoteUseCase @Inject constructor(
-    private val noteRepository: com.kin.easynotes.domain.repository.NoteRepository,
+    private val noteRepository: NoteRepository,
     private val coroutineScope: CoroutineScope,
     private val encryptionHelper: EncryptionHelper,
     @param:ApplicationContext private val context: Context

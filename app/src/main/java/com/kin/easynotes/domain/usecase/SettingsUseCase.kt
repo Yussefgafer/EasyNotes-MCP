@@ -10,7 +10,7 @@ import javax.inject.Inject
 
 class SettingsUseCase @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val settingsRepository: com.kin.easynotes.domain.repository.SettingsRepository,
+    private val settingsRepository: SettingsRepository,
 ) {
 
     suspend fun loadSettingsFromRepository(): Settings {
