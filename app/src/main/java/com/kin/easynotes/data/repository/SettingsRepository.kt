@@ -93,7 +93,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        const val MCP_ENABLED = "mcp_enabled"
-        const val MCP_PORT = "mcp_port"
+        const val MCP_ENABLED = "mcpEnabled"
+        const val MCP_PORT = "mcpPort"
     }
 }

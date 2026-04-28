@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Dns
@@ -19,10 +20,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -30,7 +34,12 @@ import com.kin.easynotes.presentation.screens.settings.SettingsScaffold
 import com.kin.easynotes.presentation.screens.settings.model.SettingsViewModel
 import com.kin.easynotes.presentation.screens.settings.widgets.ActionType
 import com.kin.easynotes.presentation.screens.settings.widgets.SettingsBox
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
 import java.net.Inet4Address
+import java.net.URL
 
 @Composable
 fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) {
@@ -39,6 +48,58 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
     val settings by viewModel.settings
     val ipAddress = remember { getLocalIpAddress(context) ?: "Unknown IP" }
     val serverUrl = "http://$ipAddress:${settings.mcpPort}/mcp"
+    
+    var showPortDialog by remember { mutableStateOf(false) }
+    var tempPort by remember { mutableStateOf(settings.mcpPort.toString()) }
+    var isServerReachable by remember { mutableStateOf(false) }
+
+    // Ping loop to check server status
+    LaunchedEffect(settings.mcpEnabled, settings.mcpPort) {
+        while (settings.mcpEnabled) {
+            isServerReachable = withContext(Dispatchers.IO) {
+                try {
+                    val connection = URL("http://127.0.0.1:${settings.mcpPort}/").openConnection() as HttpURLConnection
+                    connection.connectTimeout = 1000
+                    connection.readTimeout = 1000
+                    val responseCode = connection.responseCode
+                    responseCode == 200
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            delay(2000)
+        }
+        if (!settings.mcpEnabled) isServerReachable = false
+    }
+
+    if (showPortDialog) {
+        AlertDialog(
+            onDismissRequest = { showPortDialog = false },
+            title = { Text("Server Port") },
+            text = {
+                OutlinedTextField(
+                    value = tempPort,
+                    onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 5) tempPort = it },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = { Text("Enter Port (1-65535)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val port = tempPort.toIntOrNull()
+                    if (port != null && port in 1..65535) {
+                        viewModel.update(settings.copy(mcpPort = port))
+                        showPortDialog = false
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPortDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     SettingsScaffold(
         settingsViewModel = viewModel,
@@ -49,7 +110,6 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // Server Management Section
             item {
                 Text(
                     text = "Server Management",
@@ -60,12 +120,12 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                 
                 SettingsBox(
                     settingsViewModel = viewModel,
-                    title = if (settings.mcpEnabled) "Server is Running" else "Server is Stopped",
+                    title = if (isServerReachable) "Server is Online" else if (settings.mcpEnabled) "Server Starting..." else "Server is Offline",
                     description = if (settings.mcpEnabled) serverUrl else "Enable MCP to connect AI models",
                     icon = Icons.Rounded.Dns,
-                    actionType = ActionType.CUSTOM,
-                    radius = shapeManager(isFirst = true, radius = settings.cornerRadius),
-                    customAction = { } // Port adjustment logic can be added here or via a dialog like other settings
+                    actionType = ActionType.TEXT,
+                    customText = if (isServerReachable) "Online" else "Offline",
+                    radius = shapeManager(isFirst = true, radius = settings.cornerRadius)
                 )
                 
                 SettingsBox(
@@ -74,8 +134,8 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                     description = "Allow AI models to access notes via SSE transport",
                     icon = Icons.Rounded.PowerSettingsNew,
                     actionType = ActionType.SWITCH,
-                    switchChecked = settings.mcpEnabled,
-                    onSwitchCheckedChange = { isChecked ->
+                    variable = settings.mcpEnabled,
+                    switchEnabled = { isChecked ->
                         viewModel.update(settings.copy(mcpEnabled = isChecked))
                     },
                     radius = shapeManager(radius = settings.cornerRadius)
@@ -89,14 +149,14 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                     actionType = ActionType.CUSTOM,
                     radius = shapeManager(isLast = true, radius = settings.cornerRadius),
                     customAction = { onExit -> 
-                        // Port adjustment logic can be added here or via a dialog like other settings
+                        showPortDialog = true
+                        onExit()
                     }
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Connection Guide & Documentation
             item {
                 Text(
                     text = "Connection Guide",
@@ -119,12 +179,12 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                             Icon(
                                 Icons.Rounded.Info,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = if (isServerReachable) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "How to connect",
+                                text = if (isServerReachable) "Connection Active" else "How to connect",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
