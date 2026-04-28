@@ -1,6 +1,7 @@
 package com.kin.easynotes.presentation
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.activity.compose.setContent
@@ -8,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -20,6 +22,7 @@ import com.kin.easynotes.presentation.screens.settings.model.SettingsViewModel
 import com.kin.easynotes.presentation.theme.EasyNotesTheme
 import com.kin.easynotes.services.McpServerService
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 
 fun NavOptionsBuilder.popUpToTop(navController: NavController) {
     popUpTo(navController.currentBackStackEntry?.destination?.route ?: return) {
@@ -37,10 +40,6 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         enableEdgeToEdge()
 
-        // Start MCP Server Service
-        val intentMcp = Intent(this, McpServerService::class.java)
-        startForegroundService(intentMcp)
-
         setContent {
             settingsViewModel = hiltViewModel<SettingsViewModel>()
             val noteId = intent?.getIntExtra("noteId", -1) ?: -1
@@ -53,14 +52,31 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
+            // Start MCP Service only if enabled, with delay to ensure initialization
+            LaunchedEffect(settingsViewModel!!.settings.value.mcpEnabled) {
+                if (settingsViewModel!!.settings.value.mcpEnabled) {
+                    delay(1000)
+                    startMcpService()
+                }
+            }
+
             EasyNotesTheme(settingsViewModel!!) {
                 Surface(
                     color = MaterialTheme.colorScheme.background,
                 ) {
                     navController = rememberNavController()
-                    AppNavHost(settingsViewModel!!, navController, noteId, settingsViewModel!!.defaultRoute!!)
+                    AppNavHost(settingsViewModel!!, navController, noteId, settingsViewModel!!.defaultRoute ?: NavRoutes.Home.route)
                 }
             }
+        }
+    }
+
+    private fun startMcpService() {
+        val intentMcp = Intent(this, McpServerService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intentMcp)
+        } else {
+            startService(intentMcp)
         }
     }
 

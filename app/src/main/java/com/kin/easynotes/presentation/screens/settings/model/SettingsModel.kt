@@ -1,8 +1,8 @@
 package com.kin.easynotes.presentation.screens.settings.model
 
 import android.content.Context
-import android.util.Log
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
@@ -24,12 +24,10 @@ import com.kin.easynotes.presentation.navigation.NavRoutes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserException
 import java.io.IOException
 import javax.inject.Inject
-
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -37,41 +35,39 @@ class SettingsViewModel @Inject constructor(
     val backup: ImportExportRepository,
     private val settingsUseCase: SettingsUseCase,
     val noteUseCase: NoteUseCase,
-    private val importExportUseCase: ImportExportUseCase,
+    private val importExportUseCase: ImportExportUseCase
 ) : ViewModel() {
+
+    private val _settings = mutableStateOf(Settings())
+    val settings: State<Settings> = _settings
+
     var defaultRoute: String? = null
+    val databaseUpdate = mutableStateOf(false)
+    var password : String? = null
+
+    init {
+        loadSettings()
+    }
+
+    private fun loadSettings() {
+        viewModelScope.launch {
+            val loadedSettings = settingsUseCase.loadSettingsFromRepository()
+            _settings.value = loadedSettings
+            loadDefaultRoute()
+        }
+    }
 
     fun loadDefaultRoute() {
         if (_settings.value.fingerprint == false && _settings.value.passcode == null && _settings.value.pattern == null) {
-            defaultRoute == NavRoutes.Home.route
+            defaultRoute = NavRoutes.Home.route
         } else {
             defaultRoute = _settings.value.defaultRouteType
-
         }
     }
 
     fun updateDefaultRoute(route: String) {
         _settings.value = _settings.value.copy(defaultRouteType = route)
         update(settings.value.copy(defaultRouteType = route))
-    }
-
-    val databaseUpdate = mutableStateOf(false)
-    var password : String? = null
-
-    private val _settings = mutableStateOf(Settings())
-    var settings: State<Settings> = _settings
-
-    private suspend fun loadSettings() {
-        val loadedSettings = runBlocking(Dispatchers.IO) {
-            settingsUseCase.loadSettingsFromRepository()
-        }
-        _settings.value = loadedSettings
-        if (_settings.value.fingerprint == false && _settings.value.passcode == null && _settings.value.pattern == null) {
-
-            defaultRoute = NavRoutes.Home.route
-        } else {
-            defaultRoute = loadedSettings.defaultRouteType
-        }
     }
 
     fun update(newSettings: Settings) {
@@ -81,7 +77,6 @@ class SettingsViewModel @Inject constructor(
             settingsUseCase.saveSettingsToRepository(newSettings)
         }
     }
-
 
     fun onExportBackup(uri: Uri, context: Context) {
         viewModelScope.launch {
@@ -107,7 +102,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // Taken from: https://stackoverflow.com/questions/74114067/get-list-of-locales-from-locale-config-in-android-13
     private fun getLocaleListFromXml(context: Context): LocaleListCompat {
         val tagsList = mutableListOf<CharSequence>()
         try {
@@ -163,10 +157,4 @@ class SettingsViewModel @Inject constructor(
 
     val version: String = BuildConfig.VERSION_NAME
     val build: String = BuildConfig.BUILD_TYPE
-
-    init {
-        runBlocking {
-            loadSettings()
-        }
-    }
 }

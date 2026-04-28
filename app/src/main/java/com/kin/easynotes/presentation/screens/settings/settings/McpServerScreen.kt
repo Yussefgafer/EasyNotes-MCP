@@ -36,6 +36,7 @@ import com.kin.easynotes.presentation.screens.settings.widgets.ActionType
 import com.kin.easynotes.presentation.screens.settings.widgets.SettingsBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.Inet4Address
@@ -53,17 +54,18 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
     var tempPort by remember { mutableStateOf(settings.mcpPort.toString()) }
     var isServerReachable by remember { mutableStateOf(false) }
 
-    // Ping loop to check server status
+    // Ping loop to check server status - with proper cancellation support
     LaunchedEffect(settings.mcpEnabled, settings.mcpPort) {
         if (settings.mcpEnabled) {
             delay(1500) 
-            while (settings.mcpEnabled) {
+            while (settings.mcpEnabled && isActive) {
                 val reachable = withContext(Dispatchers.IO) {
                     try {
                         val connection = URL("http://127.0.0.1:${settings.mcpPort}/").openConnection() as HttpURLConnection
                         connection.connectTimeout = 2000
                         connection.readTimeout = 2000
                         val code = connection.responseCode
+                        connection.disconnect()
                         code == 200
                     } catch (e: Exception) {
                         false
@@ -137,7 +139,7 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                 SettingsBox(
                     settingsViewModel = viewModel,
                     title = "Enable MCP Server",
-                    description = "Allow AI models to access notes via SSE transport",
+                    description = "Allow AI models to access notes via Streamable HTTP",
                     icon = Icons.Rounded.PowerSettingsNew,
                     actionType = ActionType.SWITCH,
                     variable = settings.mcpEnabled,
@@ -200,7 +202,7 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                         Spacer(modifier = Modifier.height(12.dp))
                         
                         Text(
-                            text = "1. Connect phone and PC to the same Wi-Fi.\n" + 
+                            text = "1. Connect phone and PC to the same Wi-Fi.\n" +
                                    "2. Add the following to your Claude config:",
                             style = MaterialTheme.typography.bodySmall,
                             lineHeight = 20.sp,
@@ -216,7 +218,7 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                                 .padding(12.dp)
                         ) {
                             Text(
-                                text = "\"easynotes\": {\n  \"command\": \"curl\",\n  \"args\": [\"-N\", \"-s\", \"$serverUrl\"]\n}",
+                                text = "\"easynotes\": {\n  \"url\": \"$serverUrl\",\n  \"transport\": \"streamable_http\"\n}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

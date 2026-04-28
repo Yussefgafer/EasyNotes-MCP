@@ -9,17 +9,16 @@ import android.os.IBinder
 import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.kin.easynotes.data.repository.SettingsRepositoryImpl
 import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.domain.repository.NoteRepository
 import com.kin.easynotes.domain.repository.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
-import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -33,7 +32,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -45,6 +43,7 @@ class McpServerService : Service() {
 
     companion object {
         private const val TAG = "McpServerService"
+        private const val AUTH_HEADER = "X-MCP-API-KEY"
     }
 
     @Inject
@@ -58,6 +57,7 @@ class McpServerService : Service() {
     private var serverInstance: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
     private var isServerRunning = false
     private var currentPort = -1
+    private var apiKey: String = ""
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
@@ -106,38 +106,32 @@ class McpServerService : Service() {
         try {
             serverInstance = embeddedServer(CIO, port = port, host = "0.0.0.0") {
                 install(CORS) {
-                    anyHost()
+                    anyHost() // Use restricted host in production
                     allowMethod(HttpMethod.Options)
                     allowMethod(HttpMethod.Get)
                     allowMethod(HttpMethod.Post)
+                    allowMethod(HttpMethod.Delete) // Required for Streamable HTTP
                     allowHeader(HttpHeaders.ContentType)
+                    allowHeader(AUTH_HEADER) // Allow custom API Key header
                     allowHeader("Mcp-Session-Id")
                     allowHeader("Mcp-Protocol-Version")
                     exposeHeader("Mcp-Session-Id")
                     exposeHeader("Mcp-Protocol-Version")
+                    allowNonSimpleContentTypes = true // Required for application/json in browser
                 }
-                
-                // Explicitly install ContentNegotiation to resolve 406 error
-                install(ContentNegotiation) {
-                    json(Json {
-                        ignoreUnknownKeys = true
-                        isLenient = true
-                    })
-                }
+
+                // Note: ContentNegotiation is auto-installed by MCP SDK helpers.
+                // Manual installation removed to avoid 406/405 errors.
 
                 routing {
                     get("/") {
-                        call.respondText("EasyNotes MCP Server is online. Ready for connections at /mcp", ContentType.Text.Plain)
+                        call.respondText("EasyNotes MCP Server is online. Ready at /mcp", ContentType.Text.Plain)
                     }
-                    
-                    // Root /mcp should also respond to GET for pings
-                    get("/mcp") {
-                        call.respondText("MCP SSE Endpoint is active.", ContentType.Text.Plain)
-                    }
+                    // Removed GET /mcp to avoid conflict with mcpStreamableHttp
                 }
                 
                 mcpStreamableHttp(path = "/mcp") {
-                    Log.i(TAG, "MCP Transport initialized at /mcp")
+                    Log.i(TAG, "MCP Streamable HTTP Transport initialized at /mcp")
                     Server(
                         serverInfo = Implementation(name = "EasyNotes-MCP", version = "1.2.0"),
                         options = ServerOptions(
@@ -155,15 +149,21 @@ class McpServerService : Service() {
                             )
                         ) { _ ->
                             Log.d(TAG, "Tool Call: list_notes")
-                            val notes = runBlocking { noteRepository.getAllNotes().first() }
-                            val contentText = if (notes.isEmpty()) {
-                                "No notes found in EasyNotes."
-                            } else {
-                                notes.joinToString("\n---\n") { 
-                                    "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}"
+                            try {
+                                // Direct suspend call, no runBlocking!
+                                val notes = noteRepository.getAllNotes().first()
+                                val contentText = if (notes.isEmpty()) {
+                                    "No notes found in EasyNotes."
+                                } else {
+                                    notes.filter { !it.encrypted }.joinToString("\n---\n") { 
+                                        "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}"
+                                    }
                                 }
+                                CallToolResult(content = listOf(TextContent(text = contentText)))
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error listing notes", e)
+                                CallToolResult(content = listOf(TextContent(text = "Error: ${e.message}")), isError = true)
                             }
-                            CallToolResult(content = listOf(TextContent(contentText)))
                         }
 
                         addTool(
@@ -183,15 +183,20 @@ class McpServerService : Service() {
                                 required = listOf("title", "content")
                             )
                         ) { request ->
-                            val title = request.arguments?.get("title")?.jsonPrimitive?.content ?: ""
-                            val content = request.arguments?.get("content")?.jsonPrimitive?.content ?: ""
-                            Log.d(TAG, "Tool Call: add_note (title=$title)")
+                            try {
+                                val title = request.arguments?.get("title")?.jsonPrimitive?.content?.trim() ?: ""
+                                val content = request.arguments?.get("content")?.jsonPrimitive?.content?.trim() ?: ""
+                                Log.d(TAG, "Tool Call: add_note (title=$title)")
 
-                            if (title.isBlank() && content.isBlank()) {
-                                CallToolResult(content = listOf(TextContent("Error: Empty title/content")), isError = true)
-                            } else {
-                                runBlocking { noteRepository.addNote(Note(name = title, description = content)) }
-                                CallToolResult(content = listOf(TextContent("Note added successfully!")))
+                                if (title.isBlank() && content.isBlank()) {
+                                    CallToolResult(content = listOf(TextContent(text = "Error: Empty title/content")), isError = true)
+                                } else {
+                                    noteRepository.addNote(Note(name = title, description = content))
+                                    CallToolResult(content = listOf(TextContent(text = "Note added successfully!")))
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error adding note", e)
+                                CallToolResult(content = listOf(TextContent(text = "Error: ${e.message}")), isError = true)
                             }
                         }
 
@@ -208,12 +213,19 @@ class McpServerService : Service() {
                                 required = listOf("query")
                             )
                         ) { request ->
-                            val query = request.arguments?.get("query")?.jsonPrimitive?.content ?: ""
-                            Log.d(TAG, "Tool Call: search_notes ($query)")
-                            val notes = runBlocking { noteRepository.getAllNotes().first() }
-                            val filtered = notes.filter { it.name.contains(query, true) || it.description.contains(query, true) }
-                            val content = if (filtered.isEmpty()) "No results." else filtered.joinToString("\n---\n") { "Title: ${it.name}\n${it.description}" }
-                            CallToolResult(content = listOf(TextContent(content)))
+                            try {
+                                val query = request.arguments?.get("query")?.jsonPrimitive?.content ?: ""
+                                Log.d(TAG, "Tool Call: search_notes ($query)")
+                                val notes = noteRepository.getAllNotes().first()
+                                val filtered = notes.filter { !it.encrypted && (it.name.contains(query, true) || it.description.contains(query, true)) }
+                                val content = if (filtered.isEmpty()) "No results." else filtered.joinToString("\n---\n") { 
+                                    "ID: ${it.id} | Title: ${it.name}\n${it.description}" 
+                                }
+                                CallToolResult(content = listOf(TextContent(text = content)))
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error searching notes", e)
+                                CallToolResult(content = listOf(TextContent(text = "Error: ${e.message}")), isError = true)
+                            }
                         }
                     }
                 }
@@ -222,7 +234,7 @@ class McpServerService : Service() {
             isServerRunning = true
             currentPort = port
             Log.i(TAG, "Success: Server listening on port $port")
-            updateNotification("MCP Server is active on port $port")
+            updateNotification("MCP Server (Streamable HTTP) active on port $port")
         } catch (e: Exception) {
             Log.e(TAG, "Critical failure: Could not start Ktor server", e)
             isServerRunning = false
@@ -265,6 +277,7 @@ class McpServerService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "Service: Being destroyed")
+        // No runBlocking in onDestroy either, use runBlocking locally for cleanup
         runBlocking {
             serverMutex.withLock {
                 stopKtorServerLocked()
