@@ -23,7 +23,11 @@
 # Google Play Billing
 -keep class com.android.vending.billing.**
 
-# Ktor & Netty
+# Keep Settings model for Reflection-based persistence
+-keep class com.kin.easynotes.domain.model.Settings { *; }
+
+# MCP & Ktor
+-keep class io.modelcontextprotocol.** { *; }
 -dontwarn io.netty.**
 -dontwarn org.apache.log4j.**
 -dontwarn org.apache.logging.log4j.**

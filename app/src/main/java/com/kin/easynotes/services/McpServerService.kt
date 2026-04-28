@@ -14,9 +14,11 @@ import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.domain.repository.NoteRepository
 import com.kin.easynotes.domain.repository.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
+import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.modelcontextprotocol.kotlin.sdk.*
@@ -28,6 +30,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -48,6 +52,7 @@ class McpServerService : Service() {
     lateinit var settingsRepository: SettingsRepository
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val serverMutex = Mutex()
     private var serverInstance: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
     private var isServerRunning = false
     private var currentPort = -1
@@ -78,32 +83,46 @@ class McpServerService : Service() {
     }
 
     private suspend fun handleServerLifecycle(enabled: Boolean, port: Int) {
-        if (enabled) {
-            if (!isServerRunning || currentPort != port) {
-                if (isServerRunning) {
-                    Log.i(TAG, "Restarting server: port changed from $currentPort to $port")
-                    stopKtorServer()
+        serverMutex.withLock {
+            if (enabled) {
+                if (!isServerRunning || currentPort != port) {
+                    if (isServerRunning) {
+                        Log.i(TAG, "Lifecycle: Restarting server (port: $currentPort -> $port)")
+                        stopKtorServerLocked()
+                    }
+                    startKtorServerLocked(port)
                 }
-                startKtorServer(port)
+            } else if (isServerRunning) {
+                Log.i(TAG, "Lifecycle: Stopping server (disabled in settings)")
+                stopKtorServerLocked()
             }
-        } else if (isServerRunning) {
-            Log.i(TAG, "Stopping server: disabled in settings")
-            stopKtorServer()
         }
     }
 
-    private fun startKtorServer(port: Int) {
-        Log.i(TAG, "Initiating Ktor (CIO) server on port $port")
+    private fun startKtorServerLocked(port: Int) {
+        Log.i(TAG, "Action: Initiating Ktor (CIO) server on port $port")
         try {
             serverInstance = embeddedServer(CIO, port = port, host = "0.0.0.0") {
-                // Basic status route for debugging
+                // IMPORTANT: Install CORS to allow MCP Inspector and other web clients to connect
+                install(CORS) {
+                    anyHost()
+                    allowMethod(HttpMethod.Options)
+                    allowMethod(HttpMethod.Get)
+                    allowMethod(HttpMethod.Post)
+                    allowHeader(HttpHeaders.ContentType)
+                    // MCP Specific Headers
+                    allowHeader("Mcp-Session-Id")
+                    allowHeader("Mcp-Protocol-Version")
+                    exposeHeader("Mcp-Session-Id")
+                    exposeHeader("Mcp-Protocol-Version")
+                }
+
                 routing {
                     get("/") {
-                        call.respondText("EasyNotes MCP Server is running! Use /mcp for protocol connection.")
+                        call.respondText("EasyNotes MCP Server is running! \n\nTarget SSE endpoint: /mcp", ContentType.Text.Plain)
                     }
                 }
                 
-                // MCP protocol transport
                 mcpStreamableHttp(path = "/mcp") {
                     Log.i(TAG, "MCP Transport initialized at /mcp")
                     Server(
@@ -120,7 +139,7 @@ class McpServerService : Service() {
                             inputSchema = ToolSchema(
                                 properties = buildJsonObject {},
                                 required = emptyList()
-                            )
+                            ) 
                         ) { _ ->
                             Log.d(TAG, "Tool Call: list_notes")
                             val notes = runBlocking { noteRepository.getAllNotes().first() }
@@ -189,22 +208,22 @@ class McpServerService : Service() {
             
             isServerRunning = true
             currentPort = port
-            Log.i(TAG, "Server successfully started and listening on port $port")
+            Log.i(TAG, "Success: Server listening on port $port")
             updateNotification("MCP Server is active on port $port")
         } catch (e: Exception) {
-            Log.e(TAG, "Critical failure starting Ktor server", e)
+            Log.e(TAG, "Critical failure: Could not start Ktor server", e)
             isServerRunning = false
             updateNotification("Server Error: ${e.message}")
         }
     }
 
-    private fun stopKtorServer() {
-        Log.i(TAG, "Stopping server instance...")
+    private fun stopKtorServerLocked() {
+        Log.i(TAG, "Action: Stopping server instance")
         try {
             serverInstance?.stop(500, 1000)
-            Log.d(TAG, "Server instance stopped")
+            Log.d(TAG, "Success: Server stopped")
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping server", e)
+            Log.e(TAG, "Error: stopping server", e)
         }
         serverInstance = null
         isServerRunning = false
@@ -232,8 +251,12 @@ class McpServerService : Service() {
     }
 
     override fun onDestroy() {
-        Log.i(TAG, "Service being destroyed")
-        stopKtorServer()
+        Log.i(TAG, "Service: Being destroyed")
+        runBlocking {
+            serverMutex.withLock {
+                stopKtorServerLocked()
+            }
+        }
         serviceScope.cancel()
         super.onDestroy()
     }

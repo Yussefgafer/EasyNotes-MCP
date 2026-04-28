@@ -1,6 +1,7 @@
 package com.kin.easynotes.domain.usecase
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.kin.easynotes.core.constant.ConnectionConst
 import com.kin.easynotes.domain.repository.SettingsRepository
@@ -12,17 +13,24 @@ class SettingsUseCase @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
 ) {
+    private val TAG = "SettingsUseCase"
 
     suspend fun loadSettingsFromRepository(): Settings {
-        return Settings().apply {
-            Settings::class.java.declaredFields.forEach { field ->
+        val settings = Settings()
+        Settings::class.java.declaredFields.forEach { field ->
+            try {
                 field.isAccessible = true
                 val settingName = field.name
-                val defaultValue = field.get(this)
+                if (settingName.contains("$")) return@forEach
+                
+                val defaultValue = field.get(settings)
                 val settingValue = getSettingValue(field.type, settingName, defaultValue)
-                field.set(this, settingValue)
+                field.set(settings, settingValue)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading field ${field.name}", e)
             }
         }
+        return settings
     }
 
     private suspend fun getSettingValue(fieldType: Class<*>, settingName: String, defaultValue: Any?): Any? {
@@ -31,26 +39,27 @@ class SettingsUseCase @Inject constructor(
                 Boolean::class.java -> settingsRepository.getBoolean(settingName) ?: defaultValue
                 String::class.java -> settingsRepository.getString(settingName) ?: defaultValue
                 Int::class.java -> settingsRepository.getInt(settingName) ?: defaultValue
-                else -> defaultValue // Allow unsupported types to default to null or the defaultValue.
+                else -> defaultValue
             }
         } catch (e: ClassCastException) {
-            handleCorruptedPreference(settingName, e)
+            Log.e(TAG, "Corrupted preference: $settingName", e)
             defaultValue
         }
     }
 
-    private fun handleCorruptedPreference(settingName: String, e: ClassCastException) {
-        println("Corrupted preference. Contact support: ${ConnectionConst.SUPPORT_MAIL}")
-        println("Invalid Key: $settingName")
-        println(e.stackTraceToString())
-    }
-
     suspend fun saveSettingsToRepository(settings: Settings) {
+        Log.d(TAG, "Saving settings to repository... current mcpEnabled=${settings.mcpEnabled}")
         Settings::class.java.declaredFields.forEach { field ->
-            field.isAccessible = true
-            val settingName = field.name
-            val settingValue = field.get(settings)
-            saveSettingValue(settingName, settingValue)
+            try {
+                field.isAccessible = true
+                val settingName = field.name
+                if (settingName.contains("$")) return@forEach
+                
+                val settingValue = field.get(settings)
+                saveSettingValue(settingName, settingValue)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving field ${field.name}", e)
+            }
         }
     }
 
@@ -59,8 +68,7 @@ class SettingsUseCase @Inject constructor(
             is Boolean -> settingsRepository.putBoolean(settingName, settingValue)
             is String -> settingsRepository.putString(settingName, settingValue)
             is Int -> settingsRepository.putInt(settingName, settingValue)
-            null -> settingsRepository.getPreferences().toMutablePreferences().remove(stringPreferencesKey(settingName))
-            else -> throw IllegalArgumentException("Unsupported setting type: ${settingValue?.javaClass}")
+            null -> { /* Don't remove keys if null during mass save */ }
         }
     }
 }

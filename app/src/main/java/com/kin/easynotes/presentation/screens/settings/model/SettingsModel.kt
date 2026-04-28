@@ -1,6 +1,7 @@
 package com.kin.easynotes.presentation.screens.settings.model
 
 import android.content.Context
+import android.util.Log
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.runtime.MutableState
@@ -74,6 +75,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun update(newSettings: Settings) {
+        Log.d("SettingsViewModel", "Updating settings: mcpEnabled=${newSettings.mcpEnabled}")
         _settings.value = newSettings.copy()
         viewModelScope.launch {
             settingsUseCase.saveSettingsToRepository(newSettings)

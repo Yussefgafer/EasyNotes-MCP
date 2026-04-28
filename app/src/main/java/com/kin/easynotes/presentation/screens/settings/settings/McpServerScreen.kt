@@ -55,21 +55,26 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
 
     // Ping loop to check server status
     LaunchedEffect(settings.mcpEnabled, settings.mcpPort) {
-        while (settings.mcpEnabled) {
-            isServerReachable = withContext(Dispatchers.IO) {
-                try {
-                    val connection = URL("http://127.0.0.1:${settings.mcpPort}/").openConnection() as HttpURLConnection
-                    connection.connectTimeout = 1000
-                    connection.readTimeout = 1000
-                    val responseCode = connection.responseCode
-                    responseCode == 200
-                } catch (e: Exception) {
-                    false
+        if (settings.mcpEnabled) {
+            delay(1500) 
+            while (settings.mcpEnabled) {
+                val reachable = withContext(Dispatchers.IO) {
+                    try {
+                        val connection = URL("http://127.0.0.1:${settings.mcpPort}/").openConnection() as HttpURLConnection
+                        connection.connectTimeout = 2000
+                        connection.readTimeout = 2000
+                        val code = connection.responseCode
+                        code == 200
+                    } catch (e: Exception) {
+                        false
+                    }
                 }
+                isServerReachable = reachable
+                delay(3000)
             }
-            delay(2000)
+        } else {
+            isServerReachable = false
         }
-        if (!settings.mcpEnabled) isServerReachable = false
     }
 
     if (showPortDialog) {
@@ -90,7 +95,8 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                 TextButton(onClick = {
                     val port = tempPort.toIntOrNull()
                     if (port != null && port in 1..65535) {
-                        viewModel.update(settings.copy(mcpPort = port))
+                        val currentSettings = viewModel.settings.value
+                        viewModel.update(currentSettings.copy(mcpPort = port))
                         showPortDialog = false
                     }
                 }) { Text("Save") }
@@ -136,7 +142,8 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                     actionType = ActionType.SWITCH,
                     variable = settings.mcpEnabled,
                     switchEnabled = { isChecked ->
-                        viewModel.update(settings.copy(mcpEnabled = isChecked))
+                        val currentSettings = viewModel.settings.value
+                        viewModel.update(currentSettings.copy(mcpEnabled = isChecked))
                     },
                     radius = shapeManager(radius = settings.cornerRadius)
                 )
@@ -193,7 +200,7 @@ fun McpServerScreen(navController: NavController, viewModel: SettingsViewModel) 
                         Spacer(modifier = Modifier.height(12.dp))
                         
                         Text(
-                            text = "1. Connect phone and PC to the same Wi-Fi.\n" +
+                            text = "1. Connect phone and PC to the same Wi-Fi.\n" + 
                                    "2. Add the following to your Claude config:",
                             style = MaterialTheme.typography.bodySmall,
                             lineHeight = 20.sp,
