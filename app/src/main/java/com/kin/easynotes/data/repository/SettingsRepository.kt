@@ -31,6 +31,10 @@ class SettingsRepositoryImpl @Inject constructor(
         return context.dataStore.data.first()
     }
 
+    override fun getPreferencesFlow(): kotlinx.coroutines.flow.Flow<Preferences> {
+        return context.dataStore.data
+    }
+
     override suspend fun putString(key: String, value: String) {
         val preferencesKey = stringPreferencesKey(key)
         context.dataStore.edit { preferences ->

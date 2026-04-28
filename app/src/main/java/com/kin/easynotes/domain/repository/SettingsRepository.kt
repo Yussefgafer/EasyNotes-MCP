@@ -1,6 +1,7 @@
 package com.kin.easynotes.domain.repository
 
 import androidx.datastore.preferences.core.Preferences
+import kotlinx.coroutines.flow.Flow
 
 interface SettingsRepository {
     suspend fun putString(key: String, value: String)
@@ -14,4 +15,5 @@ interface SettingsRepository {
 
     suspend fun getEveryNotesWidget(): List<Pair<Int, Int>>
     suspend fun getPreferences(): Preferences
+    fun getPreferencesFlow(): Flow<Preferences>
 }

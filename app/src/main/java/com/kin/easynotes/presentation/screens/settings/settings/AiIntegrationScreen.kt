@@ -173,12 +173,41 @@ fun AiIntegrationScreen(navController: NavController, viewModel: SettingsViewMod
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "1. Connect phone and PC to the same Wi-Fi.\n" +
-                                   "2. Copy the URL and add it to your AI client configuration.\n" +
-                                   "3. Use the SSE transport type in your client.",
+                                   "2. Use the SSE transport type in your AI client.\n" +
+                                   "3. Add the following to your Claude config:",
                             style = MaterialTheme.typography.bodyMedium,
                             lineHeight = 24.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = "\"easynotes\": {\n  \"command\": \"curl\",\n  \"args\": [\"-N\", \"-s\", \"$serverUrl\"]\n}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Text(
+                            text = "Available Tools:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                        )
+                        
+                        Text(
+                            text = "• list_notes: View all notes\n• add_note: Create new notes\n• search_notes: Find specific notes",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
                         if (settings.mcpEnabled) {
                             Spacer(modifier = Modifier.height(24.dp))
                             Button(

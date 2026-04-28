@@ -7,6 +7,8 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import com.kin.easynotes.data.repository.SettingsRepositoryImpl
 import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.domain.repository.NoteRepository
@@ -19,8 +21,13 @@ import io.modelcontextprotocol.kotlin.sdk.server.*
 import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
 import io.modelcontextprotocol.kotlin.sdk.types.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -46,19 +53,19 @@ class McpServerService : Service() {
         startForeground(101, createNotification("AI Server is initializing..."))
         
         serviceScope.launch {
-            while (isActive) {
-                try {
-                    val enabled = settingsRepository.getBoolean(SettingsRepositoryImpl.MCP_ENABLED) ?: false
-                    val port = settingsRepository.getInt(SettingsRepositoryImpl.MCP_PORT) ?: 8080
-
-                    Log.d(TAG, "Lifecycle check: enabled=$enabled, port=$port, running=$isServerRunning, currentPort=$currentPort")
-
-                    handleServerLifecycle(enabled, port)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error in service lifecycle loop", e)
+            val enabledKey = booleanPreferencesKey(SettingsRepositoryImpl.MCP_ENABLED)
+            val portKey = intPreferencesKey(SettingsRepositoryImpl.MCP_PORT)
+            
+            settingsRepository.getPreferencesFlow()
+                .map { preferences ->
+                    val enabled = preferences[enabledKey] ?: false
+                    val port = preferences[portKey] ?: 8080
+                    enabled to port
                 }
-                delay(5000)
-            }
+                .collectLatest { (enabled, port) ->
+                    Log.d(TAG, "Settings changed: enabled=$enabled, port=$port. Updating server lifecycle.")
+                    handleServerLifecycle(enabled, port)
+                }
         }
         
         return START_STICKY
@@ -96,7 +103,11 @@ class McpServerService : Service() {
                     ).apply {
                         addTool(
                             name = "list_notes",
-                            description = "List all notes saved in the app"
+                            description = "List all notes saved in the app",
+                            inputSchema = ToolSchema(
+                                properties = buildJsonObject {},
+                                required = emptyList()
+                            )
                         ) { _ ->
                             Log.d(TAG, "MCP Tool Call: list_notes")
                             val notes = runBlocking { noteRepository.getAllNotes().first() }
@@ -112,7 +123,20 @@ class McpServerService : Service() {
 
                         addTool(
                             name = "add_note",
-                            description = "Create a new note in the app"
+                            description = "Create a new note in the app",
+                            inputSchema = ToolSchema(
+                                properties = buildJsonObject {
+                                    putJsonObject("title") {
+                                        put("type", "string")
+                                        put("description", "The title of the note")
+                                    }
+                                    putJsonObject("content") {
+                                        put("type", "string")
+                                        put("description", "The body content of the note")
+                                    }
+                                },
+                                required = listOf("title", "content")
+                            )
                         ) { request ->
                             val title = request.arguments?.get("title")?.jsonPrimitive?.content ?: ""
                             val content = request.arguments?.get("content")?.jsonPrimitive?.content ?: ""
@@ -127,6 +151,38 @@ class McpServerService : Service() {
                                 runBlocking { noteRepository.addNote(Note(name = title, description = content)) }
                                 CallToolResult(content = listOf(TextContent("Note \"$title\" added successfully to EasyNotes!")))
                             }
+                        }
+
+                        addTool(
+                            name = "search_notes",
+                            description = "Search for notes by a keyword or phrase",
+                            inputSchema = ToolSchema(
+                                properties = buildJsonObject {
+                                    putJsonObject("query") {
+                                        put("type", "string")
+                                        put("description", "The keyword to search for in titles or content")
+                                    }
+                                },
+                                required = listOf("query")
+                            )
+                        ) { request ->
+                            val query = request.arguments?.get("query")?.jsonPrimitive?.content ?: ""
+                            Log.d(TAG, "MCP Tool Call: search_notes (query=$query)")
+
+                            val notes = runBlocking { noteRepository.getAllNotes().first() }
+                            val filteredNotes = notes.filter { 
+                                it.name.contains(query, ignoreCase = true) || 
+                                it.description.contains(query, ignoreCase = true) 
+                            }
+
+                            val contentText = if (filteredNotes.isEmpty()) {
+                                "No notes found matching \"$query\"."
+                            } else {
+                                filteredNotes.joinToString("\n---\n") {
+                                    "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}"
+                                }
+                            }
+                            CallToolResult(content = listOf(TextContent(contentText)))
                         }
                     }
                 }

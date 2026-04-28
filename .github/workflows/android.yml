@@ -48,9 +48,20 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assemblePlaystoreDebug --build-cache --parallel
 
-      # ── Build Release (unsigned → then sign manually) ─────────
+      # ── Build Release APK ─────────────────────────────────────
       - name: Build Release APK
         run: ./gradlew assemblePlaystoreRelease --build-cache --parallel
+
+      # ── Sign APK ──────────────────────────────────────────────
+      - name: Sign Release APK
+        id: sign_app
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/apk/playstore/release
+          signingKeyBase64: ${{ secrets.RELEASE_KEYSTORE }}
+          alias: ${{ secrets.RELEASE_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
       # ── Upload Debug APK ──────────────────────────────────────
       - name: Upload Debug APK
@@ -60,12 +71,12 @@ jobs:
           path: app/build/outputs/apk/playstore/debug/app-playstore-debug.apk
           retention-days: 7
 
-      # ── Upload Release APK (unsigned) ────────────────────────────
-      - name: Upload Release APK
+      # ── Upload Signed Release APK ─────────────────────────────
+      - name: Upload Signed Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-playstore-release
-          path: app/build/outputs/apk/playstore/release/app-playstore-release.apk
+          name: app-playstore-release-signed
+          path: ${{ steps.sign_app.outputs.signedReleaseFile }}
           retention-days: 7
 
       # ── Cleanup keystore ──────────────────────────────────────
