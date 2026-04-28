@@ -204,7 +204,7 @@ class EditViewModel @Inject constructor(
         val currentText = _noteDescription.value.text
         val resultSelectionIndex: Int
         val rangeOfCurrentLine = getIntRangeForCurrentLine()
-        val updatedText = if (!rangeOfCurrentLine.isEmpty()) {
+        val updatedText = if (rangeOfCurrentLine.first <= rangeOfCurrentLine.last) {
             val currentLineContents = currentText.substring(rangeOfCurrentLine)
             val newLine = if (isSelectorAtStartOfNonEmptyLine()) {
                 insertText + currentLineContents

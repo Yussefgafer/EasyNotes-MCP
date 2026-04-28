@@ -5,7 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.glance.appwidget.updateAll
-import com.kin.easynotes.data.repository.NoteRepositoryImpl
+import com.kin.easynotes.domain.repository.NoteRepository
 import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.presentation.components.DecryptionResult
 import com.kin.easynotes.presentation.components.EncryptionHelper
@@ -23,10 +23,10 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class NoteUseCase @Inject constructor(
-    private val noteRepository: NoteRepositoryImpl,
+    private val noteRepository: NoteRepository,
     private val coroutineScope: CoroutineScope,
     private val encryptionHelper: EncryptionHelper,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     var notes: List<Note> by mutableStateOf(emptyList())
         private set
