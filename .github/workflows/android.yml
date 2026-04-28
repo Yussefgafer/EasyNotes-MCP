@@ -64,8 +64,8 @@ jobs:
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-signed
-          path: app/build/outputs/apk/playstore/release/app-playstore-release-unsigned.apk
+          name: app-playstore-release
+          path: app/build/outputs/apk/playstore/release/app-playstore-release.apk
           retention-days: 7
 
       # ── Cleanup keystore ──────────────────────────────────────

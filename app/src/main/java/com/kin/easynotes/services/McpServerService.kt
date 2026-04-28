@@ -15,6 +15,7 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
+import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
 import io.modelcontextprotocol.kotlin.sdk.types.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -72,50 +73,48 @@ class McpServerService : Service() {
     private fun startKtorServer(port: Int) {
         try {
             serverInstance = embeddedServer(Netty, port = port, host = "0.0.0.0") {
-                mcp {
-                    val server = Server(
+                mcpStreamableHttp(path = "/mcp") {
+                    Server(
                         serverInfo = Implementation(name = "EasyNotes-MCP", version = "1.2.0"),
                         options = ServerOptions(
                             capabilities = ServerCapabilities(
                                 tools = ServerCapabilities.Tools(listChanged = true)
                             )
                         )
-                    )
+                    ).apply {
+                        addTool(
+                            name = "list_notes",
+                            description = "List all notes saved in the app"
+                        ) { _ ->
+                            val notes = runBlocking { noteRepository.getAllNotes().first() }
+                            val contentText = if (notes.isEmpty()) {
+                                "No notes found in EasyNotes."
+                            } else {
+                                notes.joinToString("\n---\n") {
+                                    "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}"
+                                }
+                            }
+                            CallToolResult(content = listOf(TextContent(contentText)))
+                        }
 
-                    server.addTool(
-                        name = "list_notes",
-                        description = "List all notes saved in the app"
-                    ) { _ ->
-                        val notes = runBlocking { noteRepository.getAllNotes().first() }
-                        val contentText = if (notes.isEmpty()) {
-                            "No notes found in EasyNotes."
-                        } else {
-                            notes.joinToString("\n---\n") {
-                                "ID: ${it.id} | Title: ${it.name}\nContent: ${it.description}"
+                        addTool(
+                            name = "add_note",
+                            description = "Create a new note in the app"
+                        ) { request ->
+                            val title = request.arguments?.get("title")?.jsonPrimitive?.content ?: ""
+                            val content = request.arguments?.get("content")?.jsonPrimitive?.content ?: ""
+
+                            if (title.isBlank() && content.isBlank()) {
+                                CallToolResult(
+                                    content = listOf(TextContent("Error: Both title and content are missing.")),
+                                    isError = true
+                                )
+                            } else {
+                                runBlocking { noteRepository.addNote(Note(name = title, description = content)) }
+                                CallToolResult(content = listOf(TextContent("Note \"$title\" added successfully to EasyNotes!")))
                             }
                         }
-                        CallToolResult(content = listOf(TextContent(contentText)))
                     }
-
-                    server.addTool(
-                        name = "add_note",
-                        description = "Create a new note in the app"
-                    ) { request ->
-                        val title = request.arguments?.get("title")?.jsonPrimitive?.content ?: ""
-                        val content = request.arguments?.get("content")?.jsonPrimitive?.content ?: ""
-
-                        if (title.isBlank() && content.isBlank()) {
-                            CallToolResult(
-                                content = listOf(TextContent("Error: Both title and content are missing.")),
-                                isError = true
-                            )
-                        } else {
-                            runBlocking { noteRepository.addNote(Note(name = title, description = content)) }
-                            CallToolResult(content = listOf(TextContent("Note \"$title\" added successfully to EasyNotes!")))
-                        }
-                    }
-
-                    server
                 }
             }.start(wait = false)
             
