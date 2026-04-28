@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +37,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -316,7 +318,6 @@ fun RenderMarkdownElement(
             }
 
             is Link -> {
-                val context = LocalContext.current
                 val annotatedString = buildAnnotatedString {
                     val fullText = element.fullText
                     var lastIndex = 0
@@ -332,11 +333,14 @@ fun RenderMarkdownElement(
                         }
                         
                         // Add the URL with a different style and tag for clickability
-                        pushStringAnnotation("URL", url)
-                        withStyle(SpanStyle(color = linkColor, fontWeight = weight)) {
+                        withLink(
+                            LinkAnnotation.Url(
+                                url = url,
+                                styles = TextLinkStyles(style = SpanStyle(color = linkColor, fontWeight = weight))
+                            )
+                        ) {
                             append(url)
                         }
-                        pop()
                         
                         lastIndex = range.last + 1
                     }
@@ -348,16 +352,8 @@ fun RenderMarkdownElement(
                     }
                 }
                 
-                ClickableText(
+                Text(
                     text = annotatedString,
-                    onClick = { offset: Int ->
-                        annotatedString.getStringAnnotations("URL", offset, offset)
-                            .firstOrNull()?.let { annotation ->
-                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
-                                intent.data = android.net.Uri.parse(annotation.item)
-                                context.startActivity(intent)
-                            }
-                    },
                     style = androidx.compose.ui.text.TextStyle(
                         fontSize = fontSize,
                         color = MaterialTheme.colorScheme.onSurface

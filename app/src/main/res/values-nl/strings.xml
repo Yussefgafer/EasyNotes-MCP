@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Notities</string>
+    <string name="app_name">EzNotes</string>
     <string name="no_created_notes">Nog geen notities.</string>
     <string name="no_found_notes">Geen notities gevonden.</string>
     <string name="words">Woorden</string>

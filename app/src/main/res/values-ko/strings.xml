@@ -105,7 +105,7 @@
     <string name="file_import_description">다른 텍스트 파일을 노트로 가져오기</string>
     <string name="monospace_font_description">노트 편집 시 고정 폭 글꼴 사용</string>
     <string name="monospace_font">고정 폭 글꼴</string>
-    <string name="app_name">Easy Notes</string>
+    <string name="app_name">EzNotes</string>
     <string name="grid_view">그리드 뷰</string>
     <string name="select_all">모두 선택</string>
     <string name="delete">삭제</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Jednostavne Beleške</string>
+    <string name="app_name">EzNotes</string>
     <string name="home_screen">Beleške</string>
     <string name="new_note">Nova beleška</string>
     <string name="no_created_notes">Nema kreiranih beleški.</string>
