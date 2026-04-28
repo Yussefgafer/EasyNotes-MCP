@@ -55,18 +55,6 @@ object ApplicationModule {
 
     @Provides
     @Singleton
-    fun provideNoteRepository(noteDatabaseProvider: NoteDatabaseProvider): NoteRepositoryImpl {
-        return NoteRepositoryImpl(noteDatabaseProvider)
-    }
-
-    @Provides
-    @Singleton
-    fun provideSettingsRepository(@ApplicationContext context: Context): SettingsRepositoryImpl {
-        return SettingsRepositoryImpl(context)
-    }
-
-    @Provides
-    @Singleton
     fun provideBackupRepository(
         noteDatabaseProvider: NoteDatabaseProvider,
         application: Application,

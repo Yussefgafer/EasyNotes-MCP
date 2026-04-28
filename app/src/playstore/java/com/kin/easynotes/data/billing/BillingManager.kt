@@ -88,8 +88,8 @@ class BillingManager(private val context: Context) : PurchasesUpdatedListener {
 
         billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK &&
-                productDetailsResult.productDetailsList.isNotEmpty()) {
-                productDetails = productDetailsResult.productDetailsList.first()
+                productDetailsResult.isNotEmpty()) {
+                productDetails = productDetailsResult.first()
                 _purchaseState.value = PurchaseState.ProductAvailable(productDetails!!)
                 pendingActivity?.let { activity ->
                     launchBillingFlow(activity)

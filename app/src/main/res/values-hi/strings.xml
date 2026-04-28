@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">इज़ी नोट्स</string>
+    <string name="app_name">EzNotes</string>
     <string name="home_screen">नोट्स</string>
     <string name="new_note">नया नोट</string>
     <string name="dark_theme">काला थीम</string>

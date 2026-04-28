@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_screen">Notoj</string>
-    <string name="app_name">Facilaj Notoj</string>
+    <string name="app_name">EzNotes</string>
     <string name="grid_view">Reta vido</string>
     <string name="column_view">Kolumna vido</string>
     <string name="new_note">Nova Noto</string>

@@ -11,8 +11,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.kin.easynotes.domain.repository.SettingsRepository
 import com.kin.easynotes.widget.NotesWidgetReceiver
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
-
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private const val PREFERENCES_NAME = "settingsupdated"
 
@@ -21,7 +23,10 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     produceMigrations = { context -> listOf(SharedPreferencesMigration(context, PREFERENCES_NAME)) }
 )
 
-class SettingsRepositoryImpl (private val context: Context) : SettingsRepository {
+@Singleton
+class SettingsRepositoryImpl @Inject constructor(
+    @param:ApplicationContext private val context: Context
+) : SettingsRepository {
     override suspend fun getPreferences(): Preferences {
         return context.dataStore.data.first()
     }
@@ -81,5 +86,10 @@ class SettingsRepositoryImpl (private val context: Context) : SettingsRepository
             }
         }
         return widgetPairs
+    }
+
+    companion object {
+        const val MCP_ENABLED = "mcp_enabled"
+        const val MCP_PORT = "mcp_port"
     }
 }

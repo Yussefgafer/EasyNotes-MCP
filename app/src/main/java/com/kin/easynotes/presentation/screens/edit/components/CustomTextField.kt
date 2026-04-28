@@ -78,7 +78,7 @@ fun CustomTextField(
         },
         interactionSource = interactionSource,
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-            autoCorrect = !isPasswordField,
+            autoCorrectEnabled = !isPasswordField,
             keyboardType = if (isPasswordField) KeyboardType.Password else KeyboardType.Text,
             capitalization = if (isPasswordField) KeyboardCapitalization.None else KeyboardCapitalization.Sentences,
         ),

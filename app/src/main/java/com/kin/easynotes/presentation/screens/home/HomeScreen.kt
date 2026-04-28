@@ -246,88 +246,94 @@ private fun NotesSearchBar(
             .fillMaxWidth()
             .padding(horizontalPadding, 16.dp, horizontalPadding, 18.dp)
             .scale(searchBarScale),
-        query = query,
-        placeholder = { Text(stringResource(R.string.search)) },
-        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
-        trailingIcon = {
-            Row(
-                modifier = Modifier.padding(end = 6.dp)
-            ) {
-                AnimatedVisibility(
-                    visible = query.isNotBlank(),
-                    enter = slideInHorizontally(
-                        animationSpec = spring(
-                            dampingRatio = 0.8f,
-                            stiffness = 300f
-                        ),
-                        initialOffsetX = { it / 2 }
-                    ) + fadeIn(
-                        animationSpec = tween(250)
-                    ) + scaleIn(
-                        animationSpec = spring(
-                            dampingRatio = 0.8f,
-                            stiffness = 400f
-                        ),
-                        initialScale = 0.7f
-                    ),
-                    exit = slideOutHorizontally(
-                        animationSpec = tween(200),
-                        targetOffsetX = { it / 2 }
-                    ) + fadeOut(
-                        animationSpec = tween(200)
-                    ) + scaleOut(
-                        animationSpec = tween(200),
-                        targetScale = 0.7f
-                    )
-                ) {
-                    MaterialButton(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = "Clear"
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = onQueryChange,
+                expanded = false,
+                onExpandedChange = {},
+                placeholder = { Text(stringResource(R.string.search)) },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
+                trailingIcon = {
+                    Row(
+                        modifier = Modifier.padding(end = 6.dp)
                     ) {
-                        onClearClick()
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = query.isBlank(),
-                    enter = slideInHorizontally(
-                        animationSpec = spring(
-                            dampingRatio = 0.8f,
-                            stiffness = 300f
-                        ),
-                        initialOffsetX = { -it / 2 }
-                    ) + fadeIn(
-                        animationSpec = tween(250)
-                    ) + scaleIn(
-                        animationSpec = spring(
-                            dampingRatio = 0.8f,
-                            stiffness = 400f
-                        ),
-                        initialScale = 0.7f
-                    ),
-                    exit = slideOutHorizontally(
-                        animationSpec = tween(200),
-                        targetOffsetX = { -it / 2 }
-                    ) + fadeOut(
-                        animationSpec = tween(200)
-                    ) + scaleOut(
-                        animationSpec = tween(200),
-                        targetScale = 0.7f
-                    )
-                ) {
-                    Row {
-                        if (settingsModel.settings.value.vaultSettingEnabled) {
-                            VaultButton(viewModel.isVaultMode.value) { onVaultClicked() }
+                        AnimatedVisibility(
+                            visible = query.isNotBlank(),
+                            enter = slideInHorizontally(
+                                animationSpec = spring(
+                                    dampingRatio = 0.8f,
+                                    stiffness = 300f
+                                ),
+                                initialOffsetX = { it / 2 }
+                            ) + fadeIn(
+                                animationSpec = tween(250)
+                            ) + scaleIn(
+                                animationSpec = spring(
+                                    dampingRatio = 0.8f,
+                                    stiffness = 400f
+                                ),
+                                initialScale = 0.7f
+                            ),
+                            exit = slideOutHorizontally(
+                                animationSpec = tween(200),
+                                targetOffsetX = { it / 2 }
+                            ) + fadeOut(
+                                animationSpec = tween(200)
+                            ) + scaleOut(
+                                animationSpec = tween(200),
+                                targetScale = 0.7f
+                            )
+                        ) {
+                            MaterialButton(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Clear"
+                            ) {
+                                onClearClick()
+                            }
                         }
-                        SettingsButton(onSettingsClicked = onSettingsClick)
+
+                        AnimatedVisibility(
+                            visible = query.isBlank(),
+                            enter = slideInHorizontally(
+                                animationSpec = spring(
+                                    dampingRatio = 0.8f,
+                                    stiffness = 300f
+                                ),
+                                initialOffsetX = { -it / 2 }
+                            ) + fadeIn(
+                                animationSpec = tween(250)
+                            ) + scaleIn(
+                                animationSpec = spring(
+                                    dampingRatio = 0.8f,
+                                    stiffness = 400f
+                                ),
+                                initialScale = 0.7f
+                            ),
+                            exit = slideOutHorizontally(
+                                animationSpec = tween(200),
+                                targetOffsetX = { -it / 2 }
+                            ) + fadeOut(
+                                animationSpec = tween(200)
+                            ) + scaleOut(
+                                animationSpec = tween(200),
+                                targetScale = 0.7f
+                            )
+                        ) {
+                            Row {
+                                if (settingsModel.settings.value.vaultSettingEnabled) {
+                                    VaultButton(viewModel.isVaultMode.value) { onVaultClicked() }
+                                }
+                                SettingsButton(onSettingsClicked = onSettingsClick)
+                            }
+                        }
                     }
                 }
-            }
+            )
         },
-        onQueryChange = onQueryChange,
-        onSearch = onQueryChange,
-        onActiveChange = {},
-        active = false,
+        expanded = false,
+        onExpandedChange = {},
         colors = SearchBarDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {}
 }

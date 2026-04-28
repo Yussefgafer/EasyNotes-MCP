@@ -5,6 +5,7 @@ import androidx.navigation.NavController
 import com.kin.easynotes.presentation.screens.settings.MainSettings
 import com.kin.easynotes.presentation.screens.settings.model.SettingsViewModel
 import com.kin.easynotes.presentation.screens.settings.settings.AboutScreen
+import com.kin.easynotes.presentation.screens.settings.settings.AiIntegrationScreen
 import com.kin.easynotes.presentation.screens.settings.settings.CloudScreen
 import com.kin.easynotes.presentation.screens.settings.settings.ColorStylesScreen
 import com.kin.easynotes.presentation.screens.settings.settings.LanguageScreen
@@ -36,19 +37,21 @@ sealed class NavRoutes(val route: String) {
     data object Widgets : NavRoutes("settings/widgets")
     data object About : NavRoutes("settings/about")
     data object Support : NavRoutes("settings/support")
+    data object AiIntegration : NavRoutes("settings/ai_integration")
     data object LockScreen : NavRoutes("settings/lock/{type}") {
         fun createRoute(action: ActionType?) = "settings/lock/$action"
     }
 }
 
-val settingScreens = mapOf<String, @Composable (settingsViewModel: SettingsViewModel, navController : NavController) -> Unit>(
-    NavRoutes.Settings.route to { settings, navController -> MainSettings(settings, navController) },
-    NavRoutes.ColorStyles.route to { settings, navController -> ColorStylesScreen(navController,settings) },
-    NavRoutes.Language.route to { settings, navController -> LanguageScreen(navController,settings) },
-    NavRoutes.Cloud.route to { settings, navController -> CloudScreen(navController,settings) },
-    NavRoutes.Privacy.route to { settings, navController -> PrivacyScreen(navController, settings) },
-    NavRoutes.Markdown.route to { settings, navController ->  MarkdownScreen(navController,settings) },
-    NavRoutes.Tools.route to { settings, navController -> ToolsScreen(navController,settings) },
-    NavRoutes.About.route to { settings, navController -> AboutScreen(navController,settings) },
-    NavRoutes.Support.route to { settings, navController -> SupportScreen(navController,settings) }
+val settingScreens = mapOf<String, @Composable (SettingsViewModel, NavController) -> Unit>(
+    NavRoutes.Settings.route to { vm, nc -> MainSettings(vm, nc) },
+    NavRoutes.ColorStyles.route to { vm, nc -> ColorStylesScreen(nc, vm) },
+    NavRoutes.Language.route to { vm, nc -> LanguageScreen(nc, vm) },
+    NavRoutes.Cloud.route to { vm, nc -> CloudScreen(nc, vm) },
+    NavRoutes.Privacy.route to { vm, nc -> PrivacyScreen(nc, vm) },
+    NavRoutes.Markdown.route to { vm, nc -> MarkdownScreen(nc, vm) },
+    NavRoutes.Tools.route to { vm, nc -> ToolsScreen(nc, vm) },
+    NavRoutes.About.route to { vm, nc -> AboutScreen(nc, vm) },
+    NavRoutes.Support.route to { vm, nc -> SupportScreen(nc, vm) },
+    NavRoutes.AiIntegration.route to { vm, nc -> AiIntegrationScreen(nc, vm) }
 )

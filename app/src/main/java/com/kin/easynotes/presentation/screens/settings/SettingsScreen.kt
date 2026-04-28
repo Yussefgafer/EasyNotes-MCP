@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
@@ -86,6 +87,12 @@ fun MainSettings(settingsViewModel: SettingsViewModel, navController: NavControl
             item {
                 SectionBlock(
                     listOf(
+                        SettingSection(
+                            title = "AI Integration",
+                            features = listOf("Connect your notes to AI models using MCP"),
+                            icon = Icons.Rounded.AutoAwesome,
+                            onClick = { navController.navigate(NavRoutes.AiIntegration.route) }
+                        ),
                         SettingSection(
                             title = stringResource(id = R.string.color_styles),
                             features = listOf(

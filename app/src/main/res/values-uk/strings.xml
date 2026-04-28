@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="select_note">Оберіть нотатку</string>
-    <string name="app_name">Easy Notes</string>
+    <string name="app_name">EzNotes</string>
     <string name="home_screen">Нотатки</string>
     <string name="no_created_notes">Немає створених нотаток.</string>
     <string name="no_found_notes">Нотатки не знайдено.</string>

@@ -22,3 +22,12 @@
 
 # Google Play Billing
 -keep class com.android.vending.billing.**
+
+# Ktor & Netty
+-dontwarn io.netty.**
+-dontwarn org.apache.log4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn org.eclipse.jetty.npn.**
+-dontwarn reactor.blockhound.**
+-dontwarn java.lang.management.**
+-dontwarn javax.naming.**

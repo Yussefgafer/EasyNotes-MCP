@@ -93,7 +93,7 @@
     <string name="file_import_description">Impor file teks lain sebagai catatan</string>
     <string name="monospace_font_description">Gunakan font monospace saat mengedit catatan</string>
     <string name="monospace_font">Font monospace</string>
-    <string name="app_name">Easy Notes</string>
+    <string name="app_name">EzNotes</string>
     <string name="no_found_notes">Tidak ada catatan ditemukan.</string>
     <string name="characters">Karakter</string>
     <string name="select_all">Pilih semua</string>
