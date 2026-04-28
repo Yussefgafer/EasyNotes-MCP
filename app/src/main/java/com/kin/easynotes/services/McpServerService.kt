@@ -9,7 +9,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.kin.easynotes.data.repository.SettingsRepositoryImpl
 import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.domain.repository.NoteRepository
@@ -20,6 +19,7 @@ import io.ktor.server.application.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
 import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.modelcontextprotocol.kotlin.sdk.*
@@ -44,6 +44,7 @@ class McpServerService : Service() {
     companion object {
         private const val TAG = "McpServerService"
         private const val AUTH_HEADER = "X-MCP-API-KEY"
+        private const val STATIC_API_KEY = "easynotes-secret-123"
     }
 
     @Inject
@@ -57,7 +58,6 @@ class McpServerService : Service() {
     private var serverInstance: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
     private var isServerRunning = false
     private var currentPort = -1
-    private var apiKey: String = ""
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
@@ -105,29 +105,40 @@ class McpServerService : Service() {
         Log.i(TAG, "Action: Initiating Ktor (CIO) server on port $port")
         try {
             serverInstance = embeddedServer(CIO, port = port, host = "0.0.0.0") {
+                // FIXED: Secure CORS configuration
                 install(CORS) {
-                    anyHost() // Use restricted host in production
+                    allowHost("localhost:3000")
+                    allowHost("localhost:8000")
+                    allowHost("127.0.0.1")
+                    
                     allowMethod(HttpMethod.Options)
                     allowMethod(HttpMethod.Get)
                     allowMethod(HttpMethod.Post)
-                    allowMethod(HttpMethod.Delete) // Required for Streamable HTTP
+                    allowMethod(HttpMethod.Delete)
                     allowHeader(HttpHeaders.ContentType)
-                    allowHeader(AUTH_HEADER) // Allow custom API Key header
+                    allowHeader(AUTH_HEADER)
+                    allowHeader("Authorization")
                     allowHeader("Mcp-Session-Id")
                     allowHeader("Mcp-Protocol-Version")
                     exposeHeader("Mcp-Session-Id")
                     exposeHeader("Mcp-Protocol-Version")
-                    allowNonSimpleContentTypes = true // Required for application/json in browser
+                    allowNonSimpleContentTypes = true
                 }
 
-                // Note: ContentNegotiation is auto-installed by MCP SDK helpers.
-                // Manual installation removed to avoid 406/405 errors.
+                // Authentication Middleware
+                intercept(ApplicationCallPipeline.Plugins) {
+                    val apiKey = call.request.headers[AUTH_HEADER]
+                    val path = call.request.path()
+                    if (path.startsWith("/mcp") && apiKey != STATIC_API_KEY) {
+                        call.respond(HttpStatusCode.Unauthorized, "Invalid or missing MCP API Key")
+                        finish()
+                    }
+                }
 
                 routing {
                     get("/") {
                         call.respondText("EasyNotes MCP Server is online. Ready at /mcp", ContentType.Text.Plain)
                     }
-                    // Removed GET /mcp to avoid conflict with mcpStreamableHttp
                 }
                 
                 mcpStreamableHttp(path = "/mcp") {
@@ -142,7 +153,7 @@ class McpServerService : Service() {
                     ).apply {
                         addTool(
                             name = "list_notes",
-                            description = "List all notes saved in the app",
+                            description = "List all non-encrypted notes saved in the app",
                             inputSchema = ToolSchema(
                                 properties = buildJsonObject {},
                                 required = emptyList()
@@ -150,7 +161,6 @@ class McpServerService : Service() {
                         ) { _ ->
                             Log.d(TAG, "Tool Call: list_notes")
                             try {
-                                // Direct suspend call, no runBlocking!
                                 val notes = noteRepository.getAllNotes().first()
                                 val contentText = if (notes.isEmpty()) {
                                     "No notes found in EasyNotes."
@@ -202,7 +212,7 @@ class McpServerService : Service() {
 
                         addTool(
                             name = "search_notes",
-                            description = "Search for notes by a keyword",
+                            description = "Search for non-encrypted notes by a keyword",
                             inputSchema = ToolSchema(
                                 properties = buildJsonObject {
                                     putJsonObject("query") {
@@ -234,7 +244,7 @@ class McpServerService : Service() {
             isServerRunning = true
             currentPort = port
             Log.i(TAG, "Success: Server listening on port $port")
-            updateNotification("MCP Server (Streamable HTTP) active on port $port")
+            updateNotification("MCP Server active on port $port (Auth Enabled)")
         } catch (e: Exception) {
             Log.e(TAG, "Critical failure: Could not start Ktor server", e)
             isServerRunning = false
@@ -277,13 +287,20 @@ class McpServerService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "Service: Being destroyed")
-        // No runBlocking in onDestroy either, use runBlocking locally for cleanup
-        runBlocking {
-            serverMutex.withLock {
-                stopKtorServerLocked()
+        
+        // FIXED: Non-blocking cleanup using serviceScope
+        serviceScope.launch {
+            try {
+                serverMutex.withLock {
+                    stopKtorServerLocked()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during cleanup", e)
+            } finally {
+                serviceScope.cancel()
             }
         }
-        serviceScope.cancel()
+        
         super.onDestroy()
     }
 
