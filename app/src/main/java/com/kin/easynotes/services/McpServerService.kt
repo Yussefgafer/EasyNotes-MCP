@@ -15,15 +15,16 @@ import com.kin.easynotes.domain.repository.NoteRepository
 import com.kin.easynotes.domain.repository.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
-import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
 import io.modelcontextprotocol.kotlin.sdk.types.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -103,23 +105,34 @@ class McpServerService : Service() {
         Log.i(TAG, "Action: Initiating Ktor (CIO) server on port $port")
         try {
             serverInstance = embeddedServer(CIO, port = port, host = "0.0.0.0") {
-                // IMPORTANT: Install CORS to allow MCP Inspector and other web clients to connect
                 install(CORS) {
                     anyHost()
                     allowMethod(HttpMethod.Options)
                     allowMethod(HttpMethod.Get)
                     allowMethod(HttpMethod.Post)
                     allowHeader(HttpHeaders.ContentType)
-                    // MCP Specific Headers
                     allowHeader("Mcp-Session-Id")
                     allowHeader("Mcp-Protocol-Version")
                     exposeHeader("Mcp-Session-Id")
                     exposeHeader("Mcp-Protocol-Version")
                 }
+                
+                // Explicitly install ContentNegotiation to resolve 406 error
+                install(ContentNegotiation) {
+                    json(Json {
+                        ignoreUnknownKeys = true
+                        isLenient = true
+                    })
+                }
 
                 routing {
                     get("/") {
-                        call.respondText("EasyNotes MCP Server is running! \n\nTarget SSE endpoint: /mcp", ContentType.Text.Plain)
+                        call.respondText("EasyNotes MCP Server is online. Ready for connections at /mcp", ContentType.Text.Plain)
+                    }
+                    
+                    // Root /mcp should also respond to GET for pings
+                    get("/mcp") {
+                        call.respondText("MCP SSE Endpoint is active.", ContentType.Text.Plain)
                     }
                 }
                 
@@ -139,7 +152,7 @@ class McpServerService : Service() {
                             inputSchema = ToolSchema(
                                 properties = buildJsonObject {},
                                 required = emptyList()
-                            ) 
+                            )
                         ) { _ ->
                             Log.d(TAG, "Tool Call: list_notes")
                             val notes = runBlocking { noteRepository.getAllNotes().first() }
