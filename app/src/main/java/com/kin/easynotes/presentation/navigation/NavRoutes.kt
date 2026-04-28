@@ -5,7 +5,7 @@ import androidx.navigation.NavController
 import com.kin.easynotes.presentation.screens.settings.MainSettings
 import com.kin.easynotes.presentation.screens.settings.model.SettingsViewModel
 import com.kin.easynotes.presentation.screens.settings.settings.AboutScreen
-import com.kin.easynotes.presentation.screens.settings.settings.AiIntegrationScreen
+import com.kin.easynotes.presentation.screens.settings.settings.McpServerScreen
 import com.kin.easynotes.presentation.screens.settings.settings.CloudScreen
 import com.kin.easynotes.presentation.screens.settings.settings.ColorStylesScreen
 import com.kin.easynotes.presentation.screens.settings.settings.LanguageScreen
@@ -37,7 +37,7 @@ sealed class NavRoutes(val route: String) {
     data object Widgets : NavRoutes("settings/widgets")
     data object About : NavRoutes("settings/about")
     data object Support : NavRoutes("settings/support")
-    data object AiIntegration : NavRoutes("settings/ai_integration")
+    data object McpServer : NavRoutes("settings/mcp_server")
     data object LockScreen : NavRoutes("settings/lock/{type}") {
         fun createRoute(action: ActionType?) = "settings/lock/$action"
     }
@@ -53,5 +53,5 @@ val settingScreens = mapOf<String, @Composable (SettingsViewModel, NavController
     NavRoutes.Tools.route to { vm, nc -> ToolsScreen(nc, vm) },
     NavRoutes.About.route to { vm, nc -> AboutScreen(nc, vm) },
     NavRoutes.Support.route to { vm, nc -> SupportScreen(nc, vm) },
-    NavRoutes.AiIntegration.route to { vm, nc -> AiIntegrationScreen(nc, vm) }
+    NavRoutes.McpServer.route to { vm, nc -> McpServerScreen(nc, vm) }
 )

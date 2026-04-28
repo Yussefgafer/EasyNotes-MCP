@@ -88,10 +88,10 @@ fun MainSettings(settingsViewModel: SettingsViewModel, navController: NavControl
                 SectionBlock(
                     listOf(
                         SettingSection(
-                            title = "AI Integration",
-                            features = listOf("Connect your notes to AI models using MCP"),
-                            icon = Icons.Rounded.AutoAwesome,
-                            onClick = { navController.navigate(NavRoutes.AiIntegration.route) }
+                            title = "MCP Server",
+                            features = listOf("Connect your notes to AI models using MCP protocol"),
+                            icon = Icons.Rounded.Dns,
+                            onClick = { navController.navigate(NavRoutes.McpServer.route) }
                         ),
                         SettingSection(
                             title = stringResource(id = R.string.color_styles),
