@@ -1,0 +1,79 @@
+Calculating task graph as configuration cache cannot be reused because the set of Gradle properties has changed: 'continue' was added.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:prePlaystoreReleaseBuild UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:generatePlaystoreReleaseResValues UP-TO-DATE
+> Task :app:generatePlaystoreReleaseResources UP-TO-DATE
+> Task :app:generatePlaystoreReleaseBuildConfig UP-TO-DATE
+> Task :app:packagePlaystoreReleaseResources UP-TO-DATE
+> Task :app:parsePlaystoreReleaseLocalResources UP-TO-DATE
+> Task :app:createPlaystoreReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksPlaystoreRelease UP-TO-DATE
+> Task :app:checkPlaystoreReleaseAarMetadata UP-TO-DATE
+> Task :app:mapPlaystoreReleaseSourceSetPaths UP-TO-DATE
+> Task :app:mergePlaystoreReleaseResources UP-TO-DATE
+> Task :app:prePlaystoreReleaseUnitTestBuild UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:javaPreCompilePlaystoreRelease UP-TO-DATE
+> Task :app:processPlaystoreReleaseMainManifest UP-TO-DATE
+> Task :app:processPlaystoreReleaseManifest UP-TO-DATE
+> Task :app:processPlaystoreReleaseManifestForPackage UP-TO-DATE
+> Task :app:processPlaystoreReleaseResources UP-TO-DATE
+> Task :app:kspPlaystoreReleaseKotlin UP-TO-DATE
+> Task :app:compilePlaystoreReleaseKotlin UP-TO-DATE
+> Task :app:compilePlaystoreReleaseJavaWithJavac UP-TO-DATE
+> Task :app:hiltAggregateDepsPlaystoreRelease UP-TO-DATE
+> Task :app:hiltJavaCompilePlaystoreRelease UP-TO-DATE
+> Task :app:bundlePlaystoreReleaseClassesToCompileJar UP-TO-DATE
+> Task :app:generatePlaystoreReleaseLintReportModel UP-TO-DATE
+> Task :app:generatePlaystoreReleaseUnitTestLintModel UP-TO-DATE
+> Task :app:lintAnalyzePlaystoreReleaseUnitTest UP-TO-DATE
+> Task :app:lintAnalyzePlaystoreRelease UP-TO-DATE
+> Task :app:lintReportPlaystoreRelease UP-TO-DATE
+
+> Task :app:lintPlaystoreRelease FAILED
+Lint found 19 errors, 80 warnings. First failure:
+
+/app/app/src/main/java/com/kin/easynotes/presentation/theme/Schemes.kt:107: Error: Call requires API level 31 (current min is 26): dynamicDarkColorScheme [NewApi]
+    val scheme = dynamicDarkColorScheme(context)
+                 ~~~~~~~~~~~~~~~~~~~~~~
+
+The full lint text report is located at:
+  /app/app/build/intermediates/lint_intermediate_text_report/playstoreRelease/lintReportPlaystoreRelease/lint-results-playstoreRelease.txt
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:lintPlaystoreRelease'.
+> Lint found errors in the project; aborting build.
+
+  Fix the issues identified by lint, or create a baseline to see only new errors.
+  To create a baseline, run `gradlew updateLintBaseline` after adding the following to the module's build.gradle file:
+  ```
+  android {
+      lint {
+          baseline = file("lint-baseline.xml")
+      }
+  }
+  ```
+  For more details, see https://developer.android.com/studio/write/lint#snapshot
+
+  Lint found 19 errors, 80 warnings. First failure:
+
+  /app/app/src/main/java/com/kin/easynotes/presentation/theme/Schemes.kt:107: Error: Call requires API level 31 (current min is 26): dynamicDarkColorScheme [NewApi]
+      val scheme = dynamicDarkColorScheme(context)
+                   ~~~~~~~~~~~~~~~~~~~~~~
+
+  The full lint text report is located at:
+    /app/app/build/intermediates/lint_intermediate_text_report/playstoreRelease/lintReportPlaystoreRelease/lint-results-playstoreRelease.txt
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3s
+29 actionable tasks: 1 executed, 28 up-to-date
+Configuration cache entry stored.

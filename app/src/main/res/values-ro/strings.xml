@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Notițe Ușoare</string>
+    <string name="app_name">EzNotes</string>
     <string name="home_screen">Notițe</string>
     <string name="new_note">Notița nouă</string>
     <string name="no_created_notes">Nici-o notița creată.</string>

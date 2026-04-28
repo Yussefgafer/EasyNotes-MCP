@@ -97,9 +97,7 @@ class EditViewModel @Inject constructor(
         if (id != 0) {
             viewModelScope.launch {
                 noteUseCase.getNoteById(id).collectLatest { note ->
-                    if (note != null) {
                         syncNote(note)
-                    }
                 }
             }
         }

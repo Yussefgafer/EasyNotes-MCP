@@ -14,20 +14,20 @@ android {
     productFlavors {
         create("fdroid") {
             dimension = "store"
-            applicationId = "com.kin.easynotes"
+            applicationId = "com.kin.easynotes.mcp"
             versionNameSuffix = "-fdroid"
             isDefault = true
         }
 
         create("playstore") {
             dimension = "store"
-            applicationId = "com.kin.easynotes"
+            applicationId = "com.kin.easynotes.mcp"
             versionNameSuffix = "-playstore"
         }
     }
 
     defaultConfig {
-        applicationId = "com.kin.easynotes"
+        applicationId = "com.kin.easynotes.mcp"
         minSdk = 26
         targetSdk = 35
         versionCode = 14

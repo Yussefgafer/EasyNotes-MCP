@@ -2,7 +2,7 @@
 <resources>
     <string name="home_screen">Notas</string>
     <string name="no_found_notes">Nenhuma nota encontrada.</string>
-    <string name="app_name">Easy Notes</string>
+    <string name="app_name">EzNotes</string>
     <string name="no_created_notes">Nenhuma nota criada.</string>
     <string name="new_note">Criar Nota</string>
     <string name="words">Palavras</string>

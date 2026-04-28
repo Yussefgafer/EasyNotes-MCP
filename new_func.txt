@@ -1,0 +1,45 @@
+@OptIn(ExperimentalMaterial3Api::class)
+Composable
+private fun NotesSearch(
+    settingsModel: SettingsViewModel,
+    viewModel: HomeViewModel,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSettingsClick: () -> Unit,
+    onVaultClicked: () -> Unit,
+    onClearClick: () -> Unit
+) {
+    val isTyping = query.isNotBlank()
+    val searchBarScale by animateFloatAsState(
+        targetValue = if (isTyping) 1.02f else 1f,
+        anmationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "searchBarScale"
+    )
+    val horizontalPadding = if (settingsModel.settings.value.makeSearchBarLonger) 20.dp else 32.dp
+
+    SearchBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontalPadding, 16.dp, horizontalPadding, 18.dp)
+            .scale(searchBarScale),
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = onQueryChange,
+                expanded = false,
+                onExpandedChange = {},
+                placeholder = { Text(stringResource(R.string.search)) },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
+                trailingIcon = {
+                    Row(
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        AnimatedVisibility(
+                            visible = query.isNotBlank(),
+                            enter = slideInHorizontall(
+                                animationSpec = spring(
+                   // Truncated for bash
