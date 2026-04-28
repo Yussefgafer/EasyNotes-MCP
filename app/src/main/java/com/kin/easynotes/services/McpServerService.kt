@@ -105,19 +105,15 @@ class McpServerService : Service() {
         Log.i(TAG, "Action: Initiating Ktor (CIO) server on port $port")
         try {
             serverInstance = embeddedServer(CIO, port = port, host = "0.0.0.0") {
-                // FIXED: Secure CORS configuration
+                // Personal use: Allow any host but require API Key for critical paths
                 install(CORS) {
-                    allowHost("localhost:3000")
-                    allowHost("localhost:8000")
-                    allowHost("127.0.0.1")
-                    
+                    anyHost() 
                     allowMethod(HttpMethod.Options)
                     allowMethod(HttpMethod.Get)
                     allowMethod(HttpMethod.Post)
                     allowMethod(HttpMethod.Delete)
                     allowHeader(HttpHeaders.ContentType)
                     allowHeader(AUTH_HEADER)
-                    allowHeader("Authorization")
                     allowHeader("Mcp-Session-Id")
                     allowHeader("Mcp-Protocol-Version")
                     exposeHeader("Mcp-Session-Id")
@@ -125,19 +121,28 @@ class McpServerService : Service() {
                     allowNonSimpleContentTypes = true
                 }
 
-                // Authentication Middleware
+                // Enhanced Authentication Middleware
                 intercept(ApplicationCallPipeline.Plugins) {
-                    val apiKey = call.request.headers[AUTH_HEADER]
+                    // 1. Always allow OPTIONS for CORS preflight
+                    if (call.request.httpMethod == HttpMethod.Options) return@intercept
+                    
                     val path = call.request.path()
-                    if (path.startsWith("/mcp") && apiKey != STATIC_API_KEY) {
-                        call.respond(HttpStatusCode.Unauthorized, "Invalid or missing MCP API Key")
-                        finish()
+                    if (path.startsWith("/mcp")) {
+                        // 2. Protect POST and DELETE (Data access and Session management)
+                        if (call.request.httpMethod == HttpMethod.Post || call.request.httpMethod == HttpMethod.Delete) {
+                            val apiKey = call.request.headers[AUTH_HEADER]
+                            if (apiKey != STATIC_API_KEY) {
+                                call.respond(HttpStatusCode.Unauthorized, "Invalid or missing MCP API Key")
+                                finish()
+                            }
+                        }
+                        // Note: GET is allowed for SSE initialization
                     }
                 }
 
                 routing {
                     get("/") {
-                        call.respondText("EasyNotes MCP Server is online. Ready at /mcp", ContentType.Text.Plain)
+                        call.respondText("EasyNotes MCP Server is online. Ready at /mcp (Key required for POST)", ContentType.Text.Plain)
                     }
                 }
                 
@@ -287,8 +292,7 @@ class McpServerService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "Service: Being destroyed")
-        
-        // FIXED: Non-blocking cleanup using serviceScope
+        // FIXED: Using existing serviceScope to perform non-blocking cleanup
         serviceScope.launch {
             try {
                 serverMutex.withLock {
@@ -300,7 +304,6 @@ class McpServerService : Service() {
                 serviceScope.cancel()
             }
         }
-        
         super.onDestroy()
     }
 
