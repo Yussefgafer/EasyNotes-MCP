@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.util.Log
 import com.kin.easynotes.data.repository.SettingsRepositoryImpl
 import com.kin.easynotes.domain.model.Note
 import com.kin.easynotes.domain.repository.NoteRepository
@@ -24,6 +25,10 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class McpServerService : Service() {
+
+    companion object {
+        private const val TAG = "McpServerService"
+    }
 
     @Inject
     lateinit var noteRepository: NoteRepository
@@ -46,9 +51,11 @@ class McpServerService : Service() {
                     val enabled = settingsRepository.getBoolean(SettingsRepositoryImpl.MCP_ENABLED) ?: false
                     val port = settingsRepository.getInt(SettingsRepositoryImpl.MCP_PORT) ?: 8080
 
+                    Log.d(TAG, "Lifecycle check: enabled=$enabled, port=$port, running=$isServerRunning, currentPort=$currentPort")
+
                     handleServerLifecycle(enabled, port)
                 } catch (e: Exception) {
-                    // Log error but keep service running
+                    Log.e(TAG, "Error in service lifecycle loop", e)
                 }
                 delay(5000)
             }
@@ -61,19 +68,24 @@ class McpServerService : Service() {
         if (enabled) {
             if (!isServerRunning || currentPort != port) {
                 if (isServerRunning) {
+                    Log.i(TAG, "Restarting server because of config change (port: $currentPort -> $port)")
                     stopKtorServer()
                 }
                 startKtorServer(port)
             }
         } else if (isServerRunning) {
+            Log.i(TAG, "Stopping server because it was disabled in settings")
             stopKtorServer()
         }
     }
 
     private fun startKtorServer(port: Int) {
+        Log.i(TAG, "Attempting to start Ktor server on port $port...")
         try {
             serverInstance = embeddedServer(Netty, port = port, host = "0.0.0.0") {
+                Log.d(TAG, "Ktor application configuring...")
                 mcpStreamableHttp(path = "/mcp") {
+                    Log.d(TAG, "MCP Streamable HTTP transport initializing at /mcp")
                     Server(
                         serverInfo = Implementation(name = "EasyNotes-MCP", version = "1.2.0"),
                         options = ServerOptions(
@@ -86,6 +98,7 @@ class McpServerService : Service() {
                             name = "list_notes",
                             description = "List all notes saved in the app"
                         ) { _ ->
+                            Log.d(TAG, "MCP Tool Call: list_notes")
                             val notes = runBlocking { noteRepository.getAllNotes().first() }
                             val contentText = if (notes.isEmpty()) {
                                 "No notes found in EasyNotes."
@@ -103,6 +116,7 @@ class McpServerService : Service() {
                         ) { request ->
                             val title = request.arguments?.get("title")?.jsonPrimitive?.content ?: ""
                             val content = request.arguments?.get("content")?.jsonPrimitive?.content ?: ""
+                            Log.d(TAG, "MCP Tool Call: add_note (title=$title)")
 
                             if (title.isBlank() && content.isBlank()) {
                                 CallToolResult(
@@ -120,18 +134,22 @@ class McpServerService : Service() {
             
             isServerRunning = true
             currentPort = port
+            Log.i(TAG, "Ktor server started successfully on port $port")
             updateNotification("AI Server (MCP) is running on port $port")
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to start Ktor server on port $port", e)
             isServerRunning = false
             updateNotification("Server Error: ${e.message}")
         }
     }
 
     private fun stopKtorServer() {
+        Log.i(TAG, "Stopping Ktor server (running on $currentPort)...")
         try {
             serverInstance?.stop(1000, 2000)
+            Log.d(TAG, "Ktor server instance stopped")
         } catch (e: Exception) {
-            // Silently fail if already stopped
+            Log.e(TAG, "Error while stopping Ktor server", e)
         }
         serverInstance = null
         isServerRunning = false
@@ -159,6 +177,7 @@ class McpServerService : Service() {
     }
 
     override fun onDestroy() {
+        Log.i(TAG, "McpServerService being destroyed")
         stopKtorServer()
         serviceScope.cancel()
         super.onDestroy()
